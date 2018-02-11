@@ -1,25 +1,7 @@
-/***************************************************
-  This is a library for the Adafruit 1.8" SPI display.
 
-This library works with the Adafruit 1.8" TFT Breakout w/SD card
-  ----> http://www.adafruit.com/products/358
-The 1.8" TFT shield
-  ----> https://www.adafruit.com/product/802
-The 1.44" TFT breakout
-  ----> https://www.adafruit.com/product/2088
-as well as Adafruit raw 1.8" TFT display
-  ----> http://www.adafruit.com/products/618
+ // int temp = 6; // define the digital temperature sensor interface
+int val ; // define numeric variables val
 
-  Check out the links above for our tutorials and wiring diagrams
-  These displays use SPI to communicate, 4 or 5 pins are required to
-  interface (RST is optional)
-  Adafruit invests time and resources providing this open source code,
-  please support Adafruit and open-source hardware by purchasing
-  products from Adafruit!
-
-  Written by Limor Fried/Ladyada for Adafruit Industries.
-  MIT license, all text above must be included in any redistribution
- ****************************************************/
 
 #include <Adafruit_GFX.h>    // Core graphics library
 #include <Adafruit_ST7735.h> // Hardware-specific library
@@ -46,8 +28,15 @@ Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS,  TFT_DC, TFT_RST);
 
 
 float p = 3.1415926;
+
+// --------------------------------------------------------------------------------------------------------------------
+
+
+
 void setup() {
-    Serial.begin(9600);
+  Serial.begin(9600);
+  
+//  pinMode (temp, INPUT) ;// define digital temperature sensor output interface
   Serial.print("Hello! ST7735 TFT Test");
 
   // Use this initializer if you're using a 1.8" TFT
@@ -70,11 +59,107 @@ void setup() {
 }
 
 void loop() {
+
+  
+  tft.fillRect(77, 20 , 50, 40, ST7735_BLACK);
+  tft.fillScreen(ST7735_BLACK);
   tft.setCursor(0, 20);
-  tft.setTextColor(ST7735_WHITE);
   tft.setTextSize(1);
-  tft.setTextColor(ST7735_MAGENTA);
+  tft.setTextColor(ST7735_YELLOW);
   tft.println("Katrin V2.0!");
-   tft.println("Temperature: ");
+  tft.println("");  
+  tft.setTextColor(ST7735_WHITE);
+  tft.print("Temperature: ");
+   tft.setTextColor(ST7735_MAGENTA);
+//  tft.print(analogRead(temp));
+  delay(500);
+  
+ 
+  // ---------------------------------------------------------
+  tft.setCursor(0, 10);
+  //  tft.print(map(((4.20 - batteryVoltage) / 0.50) * 100, 0, 100, 16, 1));
+ 
+  tft.print(readVcc()); // 4266
+  tft.setTextColor(ST7735_GREEN);
+  tft.print("mV");
+  tft.setTextSize(1);
+ 
+  if (readVcc() < 3788) {                                    // 3788 ~ 3.69V on the Battery
+      batteryStatusImage(ST7735_GREEN,105, 2,  5, true);
+  } else{
+      batteryStatusImage(ST7735_GREEN,105, 2, map(readVcc(), 4311, 3788, 16, 1), false);  
+  }
+
+  if (readVcc() > 4311) {
+    tft.setCursor(0, 0);
+    tft.print("Charging");
+  }
   
 }
+
+void batteryStatusImage(uint16_t color1,uint16_t x, uint16_t y, uint16_t fillUp, boolean expired) { // fillUp can be from 1 to 16
+    if(expired) {
+       tft.drawFastHLine(x, 2, 20, ST7735_RED);  
+       tft.drawFastHLine(x, y + 8, 20, ST7735_RED);
+       tft.drawFastVLine(x, 2, 9, ST7735_RED);
+       tft.drawFastVLine(x + 20, 2, 9, ST7735_RED);
+       tft.drawFastVLine(x -1, y + 2, 5, ST7735_RED);
+       tft.drawFastVLine(x -2, y + 2, 5, ST7735_RED);
+    } else {
+       tft.drawFastHLine(x, 2, 20, color1);  
+       tft.drawFastHLine(x, y + 8, 20, color1);
+       tft.drawFastVLine(x, 2, 9, color1);
+       tft.drawFastVLine(x + 20, 2, 9, color1);
+       tft.drawFastVLine(x -1, y + 2, 5, color1);
+       tft.drawFastVLine(x -2, y + 2, 5, color1);
+       
+       // filling up
+       for (int i = 0;i <= fillUp; i++){
+         tft.drawFastVLine((x + 18) - i, y + 2, 5, color1); 
+       }
+    }
+}
+
+void batteryExpiredStatusImage(uint16_t color1,uint16_t x, uint16_t y) {   
+   
+}
+/*
+double GetTemperature(int v){
+  double Temp;
+  Temp = log(10000.0 / (1024.0 / v - 1)); 
+  Temp = 1 / (0.001129148 + (0.000234125 + (0.0000000876741 * Temp * Temp))* Temp);
+  Temp = Temp - 273.15; // Convert Kelvin to Celcius
+  return Temp;
+  
+}
+*/
+
+long readVcc() {
+  // Read 1.1V reference against AVcc
+  // set the reference to Vcc and the measurement to the internal 1.1V reference
+  #if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
+    ADMUX = _BV(REFS0) | _BV(MUX4) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
+  #elif defined (__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
+    ADMUX = _BV(MUX5) | _BV(MUX0);
+  #elif defined (__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
+    ADMUX = _BV(MUX3) | _BV(MUX2);
+  #else
+    ADMUX = _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
+  #endif  
+
+  delay(2); // Wait for Vref to settle
+  ADCSRA |= _BV(ADSC); // Start conversion
+  while (bit_is_set(ADCSRA,ADSC)); // measuring
+
+  uint8_t low  = ADCL; // must read ADCL first - it then locks ADCH  
+  uint8_t high = ADCH; // unlocks both
+
+  long result = (high<<8) | low;
+
+  result = 1125300L / result; // Calculate Vcc (in mV); 1125300 = 1.1*1023*1000
+ // return result; // Vcc in millivolts
+  float v = result;
+  return v;
+}
+
+
