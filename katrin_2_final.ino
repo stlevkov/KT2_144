@@ -1,5 +1,5 @@
 
- // int temp = 6; // define the digital temperature sensor interface
+  int temp = 6; // define the digital temperature sensor interface
 int val ; // define numeric variables val
 
 
@@ -8,8 +8,7 @@ int val ; // define numeric variables val
 #include <SPI.h>
 
 
-// For the breakout, you can use any 2 or 3 pins
-// These pins will also work for the 1.8" TFT shield
+// Define 1.44" display pins
 #define TFT_CS     10
 #define TFT_RST    8  // you can also connect this to the Arduino reset
                       // in which case, set this #define pin to -1!
@@ -36,7 +35,7 @@ float p = 3.1415926;
 void setup() {
   Serial.begin(9600);
   
-//  pinMode (temp, INPUT) ;// define digital temperature sensor output interface
+  pinMode (temp, INPUT) ;// define digital temperature sensor output interface
   Serial.print("Hello! ST7735 TFT Test");
 
   // Use this initializer if you're using a 1.8" TFT
@@ -56,44 +55,80 @@ void setup() {
 
   Serial.println(time, DEC);
   delay(500);
+
 }
 
 void loop() {
 
   
-  tft.fillRect(77, 20 , 50, 40, ST7735_BLACK);
-  tft.fillScreen(ST7735_BLACK);
-  tft.setCursor(0, 20);
+//  tft.fillRect(77, 20 , 50, 40, ST7735_BLACK);
+  tft.setCursor(2, 4);
   tft.setTextSize(1);
-  tft.setTextColor(ST7735_YELLOW);
-  tft.println("Katrin V2.0!");
-  tft.println("");  
-  tft.setTextColor(ST7735_WHITE);
-  tft.print("Temperature: ");
-   tft.setTextColor(ST7735_MAGENTA);
-//  tft.print(analogRead(temp));
-  delay(500);
-  
- 
-  // ---------------------------------------------------------
-  tft.setCursor(0, 10);
-  //  tft.print(map(((4.20 - batteryVoltage) / 0.50) * 100, 0, 100, 16, 1));
- 
-  tft.print(readVcc()); // 4266
+  tft.setTextColor(ST7735_MAGENTA);
+  tft.print(readVcc() - 150); // 4266
   tft.setTextColor(ST7735_GREEN);
   tft.print("mV");
-  tft.setTextSize(1);
  
+  // ---------------------------------------------------------
+  temp = 10;
+ 
+  tft.setCursor(40, 40);
+  tft.setTextSize(7);
+
+  // analogRead(temp)
+   
+  
+  
+  if (temp >= 20 && temp <= 22){
+    tft.setTextColor(ST7735_GREEN);
+    tft.print(temp);
+  } else if (temp > 24){
+    tft.setTextColor(ST7735_RED);
+    tft.print(temp);
+  } else if (temp < 20) {
+    tft.setTextColor(ST7735_BLUE);
+    tft.print(temp);
+  } else if (temp > 22 && temp <= 24){
+    tft.setTextColor(ST7735_YELLOW);
+    tft.print(temp);
+  }
+  termometerStatusImage(ST7735_WHITE, ST7735_RED, 10, 10, map(temp, 1, 60, 1 , 29)); 
+  
+
+  // ---------------------------------------------------------
+  tft.setTextSize(1);
   if (readVcc() < 3788) {                                    // 3788 ~ 3.69V on the Battery
       batteryStatusImage(ST7735_GREEN,105, 2,  5, true);
   } else{
       batteryStatusImage(ST7735_GREEN,105, 2, map(readVcc(), 4311, 3788, 16, 1), false);  
   }
-
+  
+  // ---------------------------------------------------------
   if (readVcc() > 4311) {
-    tft.setCursor(0, 0);
+    tft.setTextColor(ST7735_BLUE);
+    tft.setCursor(50, 4);
     tft.print("Charging");
   }
+
+   // ---------------------------------------------------------
+
+  
+    
+   
+}
+
+void termometerStatusImage(uint16_t color1, uint16_t color2, uint16_t x, uint16_t y, uint16_t fillUp){ // fillUp can be from 1 to 29
+    
+   tft.drawFastHLine(15, 40, 5, color1);  
+   tft.drawFastVLine(14, 41, 30, color1);
+   tft.drawFastVLine(20, 41, 30, color1);
+   tft.drawCircle(17, 80, 9, color1);
+   tft.fillCircle(17, 80, 8, color2);
+
+   // fill up 
+   for (int i = 0; i <= fillUp; i++){
+      tft.drawFastHLine(15, 70 - i, 5,color2); 
+   } 
   
 }
 
