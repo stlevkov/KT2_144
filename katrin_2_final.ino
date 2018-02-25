@@ -55,31 +55,65 @@ void setup() {
 
   Serial.println(time, DEC);
   delay(500);
-
+  temp = 1;
 }
 
 void loop() {
-
   
-//  tft.fillRect(77, 20 , 50, 40, ST7735_BLACK);
-  tft.setCursor(2, 4);
-  tft.setTextSize(1);
-  tft.setTextColor(ST7735_MAGENTA);
-  tft.print(readVcc() - 150); // 4266
-  tft.setTextColor(ST7735_GREEN);
-  tft.print("mV");
- 
-  // ---------------------------------------------------------
-  temp = 10;
+  //  tft.fillRect(77, 20 , 50, 40, ST7735_BLACK);
+  
+  // --------------------------TERMOMETER VALUES-------------------------------
+  
+  temp = 24;                           // TODO Change with the value from the sensor
+  delay(2000);
+  tft.fillScreen(ST7735_BLACK);
  
   tft.setCursor(40, 40);
   tft.setTextSize(7);
+  printTermometerValues(temp);
+  
 
-  // analogRead(temp)
-   
+  // -----------------------TERMOMETER STATUS ICON----------------------------------
+
   
+  termometerStatusImage(ST7735_WHITE, ST7735_RED, 10, 10, map(temp, 1, 60, 1 , 29)); 
   
-  if (temp >= 20 && temp <= 22){
+
+  // -----------------------BATTERY STATUS ICON----------------------------------
+  tft.setTextSize(1);
+  if (readVcc() < 3788) {                                    // 3788 ~ 3.69V on the Battery
+      batteryStatusImage("",105, 2,  5, true);             // we call the function with "" because if expired=true we set RED color instead
+  } else{
+      batteryStatusImage(ST7735_WHITE,105, 2, map(readVcc(), 3788, 4311, 1, 16), false);  
+  }
+  
+  // ------------------------CHARGING ICON BATTERY PERCENTAGE---------------------------------
+  
+    if (!true) {  // TODO hook up wire to the Charging module
+      
+    } else {
+      tft.setTextColor(ST7735_CYAN);
+      
+      if (readVcc() > 4320){
+        tft.setCursor(50, 3);
+        tft.print("Charg.");
+      } else {
+        tft.setCursor(82, 3);
+        tft.print(map(readVcc(), 3788, 4311, 0, 100));
+        tft.print("%");
+      }    
+    }
+
+   // -----------------------DATE AND TIME ----------------------------------
+
+  tft.setCursor(2, 3);
+  tft.setTextSize(1);
+  tft.setTextColor(ST7735_WHITE);
+  tft.print("13:45"); // 4266
+}
+
+void printTermometerValues(int temp){
+   if (temp >= 20 && temp <= 22){
     tft.setTextColor(ST7735_GREEN);
     tft.print(temp);
   } else if (temp > 24){
@@ -92,29 +126,6 @@ void loop() {
     tft.setTextColor(ST7735_YELLOW);
     tft.print(temp);
   }
-  termometerStatusImage(ST7735_WHITE, ST7735_RED, 10, 10, map(temp, 1, 60, 1 , 29)); 
-  
-
-  // ---------------------------------------------------------
-  tft.setTextSize(1);
-  if (readVcc() < 3788) {                                    // 3788 ~ 3.69V on the Battery
-      batteryStatusImage(ST7735_GREEN,105, 2,  5, true);
-  } else{
-      batteryStatusImage(ST7735_GREEN,105, 2, map(readVcc(), 4311, 3788, 16, 1), false);  
-  }
-  
-  // ---------------------------------------------------------
-  if (readVcc() > 4311) {
-    tft.setTextColor(ST7735_BLUE);
-    tft.setCursor(50, 4);
-    tft.print("Charging");
-  }
-
-   // ---------------------------------------------------------
-
-  
-    
-   
 }
 
 void termometerStatusImage(uint16_t color1, uint16_t color2, uint16_t x, uint16_t y, uint16_t fillUp){ // fillUp can be from 1 to 29
@@ -134,23 +145,21 @@ void termometerStatusImage(uint16_t color1, uint16_t color2, uint16_t x, uint16_
 
 void batteryStatusImage(uint16_t color1,uint16_t x, uint16_t y, uint16_t fillUp, boolean expired) { // fillUp can be from 1 to 16
     if(expired) {
-       tft.drawFastHLine(x, 2, 20, ST7735_RED);  
-       tft.drawFastHLine(x, y + 8, 20, ST7735_RED);
-       tft.drawFastVLine(x, 2, 9, ST7735_RED);
-       tft.drawFastVLine(x + 20, 2, 9, ST7735_RED);
-       tft.drawFastVLine(x -1, y + 2, 5, ST7735_RED);
-       tft.drawFastVLine(x -2, y + 2, 5, ST7735_RED);
+       tft.drawFastHLine(x, 2, 20, ST7735_RED);                   // Draw top Corner line of the battery icon
+       tft.drawFastHLine(x, y + 8, 20, ST7735_RED);               // Draw bottom Corner line of the battery icon
+       tft.drawFastVLine(x, 2, 9, ST7735_RED);                    // Draw left Corner line of the battery icon
+       tft.drawFastVLine(x + 20, 2, 9, ST7735_RED);               // Draw right Corner line of the battery icon
+       tft.drawFastVLine(x -1, y + 2, 5, ST7735_RED);             // Draw the left positive cathode of the battery     
     } else {
-       tft.drawFastHLine(x, 2, 20, color1);  
-       tft.drawFastHLine(x, y + 8, 20, color1);
-       tft.drawFastVLine(x, 2, 9, color1);
-       tft.drawFastVLine(x + 20, 2, 9, color1);
-       tft.drawFastVLine(x -1, y + 2, 5, color1);
-       tft.drawFastVLine(x -2, y + 2, 5, color1);
+       tft.drawFastHLine(x, 2, 20, color1);                       // Draw top Corner line of the battery icon
+       tft.drawFastHLine(x, y + 8, 20, color1);                   // Draw bottom Corner line of the battery icon
+       tft.drawFastVLine(x, 2, 9, color1);                        // Draw left Corner line of the battery icon
+       tft.drawFastVLine(x + 20, 2, 9, color1);                   // Draw right Corner line of the battery icon
+       tft.drawFastVLine(x -1, y + 2, 5, color1);                 // Draw the left positive cathode of the battery
        
        // filling up
        for (int i = 0;i <= fillUp; i++){
-         tft.drawFastVLine((x + 18) - i, y + 2, 5, color1); 
+         tft.drawFastVLine((x + 18) - i, y + 2, 5, ST7735_GREEN); 
        }
     }
 }
