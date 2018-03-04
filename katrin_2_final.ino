@@ -1,3 +1,6 @@
+#include <Wire.h>  // Needed for I2C communication
+#include <TimeLib.h>   // Needed by CLock 
+#include <DS1307RTC.h> // Clock library
 
 int temp = 6; // define the digital temperature sensor interface
 int val ; // define numeric variables val
@@ -7,6 +10,16 @@ int val ; // define numeric variables val
 #include <Adafruit_ST7735.h> // Hardware-specific library
 #include <SPI.h>
 
+// Define D3, D4 for Rotary Encoder Button
+#define outputA 3
+#define outputB 4
+#define encoderSwitch 2
+
+int switchCounter = 0;
+int counter = 0; 
+int aState;
+int bState;
+int aLastState;  
 
 // Define 1.44" display pins
 #define TFT_CS     10
@@ -34,6 +47,14 @@ float p = 3.1415926;
 
 void setup() {
   Serial.begin(9600);
+
+  pinMode (outputA,INPUT); // Define outputA to be INPUT from Rotary Encoder
+  pinMode (outputB,INPUT); // Define outputB to be INPUT from Rotary Encoder
+  pinMode (encoderSwitch, OUTPUT); // Define Rotary Encoder Click switch to be output
+  digitalWrite(encoderSwitch, HIGH);
+
+  // Reads the initial state of the outputA
+  aLastState = digitalRead(outputA);   
   
   pinMode (temp, INPUT) ;// define digital temperature sensor output interface
   Serial.print("Hello! ST7735 TFT Test");
@@ -59,6 +80,42 @@ void setup() {
 }
 
 void loop() {
+  
+    // -----------------------ROTARY ENCODER SWITCH ----------------------------------
+
+     while(digitalRead(encoderSwitch) == LOW) {
+        
+        switchCounter += 1;
+        delay(300);
+        if (switchCounter > 1){
+            Serial.println("Switch Pressed");
+            if (digitalRead(encoderSwitch) == HIGH){
+              Serial.println("Switch Released");   
+            }
+        } else {
+          Serial.println("Switch CLicked");    
+        }
+        
+     }  
+     switchCounter = 0;
+         
+  
+    // -----------------------ROTARY ENCODER ----------------------------------
+   aState = digitalRead(outputA); // Reads the "current" state of the outputA
+   bState = digitalRead(outputB);
+   // If the previous and the current state of the outputA are different, that means a Pulse has occured
+   if (aState != aLastState){     
+     // If the outputB state is different to the outputA state, that means the encoder is rotating clockwise
+     if (bState != aState) { 
+       counter ++;
+     } else {
+       counter --;
+     }
+     Serial.print("Position: ");
+     Serial.println(counter);
+   } 
+   aLastState = aState; // Updates the previous state of the outputA with the current state
+  
   
   //  tft.fillRect(77, 20 , 50, 40, ST7735_BLACK);
   
@@ -108,7 +165,11 @@ void loop() {
   tft.setCursor(2, 3);
   tft.setTextSize(1);
   tft.setTextColor(ST7735_WHITE);
-  tft.print("13:45"); // 4266
+  tft.print(getClock());  // Print Clock
+
+   // Test print Clock on Serial Monitor TODO Delete it
+  
+
 }
 
 void printTermometerValues(int temp){
@@ -202,6 +263,52 @@ long readVcc() {
  // return result; // Vcc in millivolts
   float v = result;
   return v;
+}
+
+// Needed by Clock for displayin the numbers in two digits
+void print2digits(int number) {
+  if (number >= 0 && number < 10) {
+    Serial.write('0');
+  }
+  Serial.print(number);
+}
+
+String getClock(){
+    String msg = "";
+    tmElements_t tm;
+
+    if (RTC.read(tm)) {
+      msg += tm.Hour;
+      msg += ":";
+      msg += tm.Minute;
+    /* 
+      Serial.print("Ok, Time = ");
+      print2digits(tm.Hour);
+      Serial.write(':');
+      print2digits(tm.Minute);
+      Serial.write(':');
+      print2digits(tm.Second);
+      Serial.print(", Date (D/M/Y) = ");
+      Serial.print(tm.Day);
+      Serial.write('/');
+      Serial.print(tm.Month);
+      Serial.write('/');
+      Serial.print(tmYearToCalendar(tm.Year));
+      Serial.println();
+      */
+    } else {
+      if (RTC.chipPresent()) {
+        Serial.println("The DS1307 is stopped.  Please run the SetTime");
+        Serial.println("example to initialize the time and begin running.");
+        Serial.println();
+    } else {
+        Serial.println("DS1307 read error!  Please check the circuitry.");
+        Serial.println();
+    }
+      delay(9000);
+  }
+  return msg;
+    
 }
 
 
