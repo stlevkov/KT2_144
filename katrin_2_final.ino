@@ -1,5 +1,5 @@
 
-  int temp = 6; // define the digital temperature sensor interface
+int temp = 6; // define the digital temperature sensor interface
 int val ; // define numeric variables val
 
 
@@ -93,7 +93,6 @@ void loop() {
       
     } else {
       tft.setTextColor(ST7735_CYAN);
-      
       if (readVcc() > 4320){
         tft.setCursor(50, 3);
         tft.print("Charg.");
@@ -149,14 +148,16 @@ void batteryStatusImage(uint16_t color1,uint16_t x, uint16_t y, uint16_t fillUp,
        tft.drawFastHLine(x, y + 8, 20, ST7735_RED);               // Draw bottom Corner line of the battery icon
        tft.drawFastVLine(x, 2, 9, ST7735_RED);                    // Draw left Corner line of the battery icon
        tft.drawFastVLine(x + 20, 2, 9, ST7735_RED);               // Draw right Corner line of the battery icon
-       tft.drawFastVLine(x -1, y + 2, 5, ST7735_RED);             // Draw the left positive cathode of the battery     
+       tft.drawFastVLine(x -1, y + 2, 5, ST7735_RED);             // Draw the left positive cathode of the battery #1    
+       tft.drawFastVLine(x -2, y + 2, 5, ST7735_RED);             // Draw the left positive cathode of the battery #2  
     } else {
        tft.drawFastHLine(x, 2, 20, color1);                       // Draw top Corner line of the battery icon
        tft.drawFastHLine(x, y + 8, 20, color1);                   // Draw bottom Corner line of the battery icon
        tft.drawFastVLine(x, 2, 9, color1);                        // Draw left Corner line of the battery icon
        tft.drawFastVLine(x + 20, 2, 9, color1);                   // Draw right Corner line of the battery icon
-       tft.drawFastVLine(x -1, y + 2, 5, color1);                 // Draw the left positive cathode of the battery
-       
+       tft.drawFastVLine(x -1, y + 2, 5, color1);                 // Draw the left positive cathode of the battery #1
+       tft.drawFastVLine(x -2, y + 2, 5, color1);                 // Draw the left positive cathode of the battery #2  
+      
        // filling up
        for (int i = 0;i <= fillUp; i++){
          tft.drawFastVLine((x + 18) - i, y + 2, 5, ST7735_GREEN); 
@@ -164,9 +165,6 @@ void batteryStatusImage(uint16_t color1,uint16_t x, uint16_t y, uint16_t fillUp,
     }
 }
 
-void batteryExpiredStatusImage(uint16_t color1,uint16_t x, uint16_t y) {   
-   
-}
 /*
 double GetTemperature(int v){
   double Temp;
