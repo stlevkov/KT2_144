@@ -60,7 +60,7 @@ void setup() {
   tft.initR(INITR_144GREENTAB);   // initialize a ST7735S chip, black tab
 
   // Set first background to black
- // tft.fillScreen(ST7735_BLACK);
+  tft.fillScreen(ST7735_BLACK);
 
 
   pages[0] = 1;   // Home Page
@@ -83,7 +83,16 @@ void loop() {
       pages[2] = 0;
       pages[3] = 0;
       pages[4] = 0;
-      tft.fillScreen(ST7735_BLACK); // Clear the Display
+      tft.fillScreen(ST7735_BLACK); // Clear the display
+      drawHeader();
+      drawMenuListEmpty();
+      counter = 0; // Clear the counter for the Menu, so we can start the menu with 1st
+      menus[0] = 1;
+      menus[1] = 0;
+      menus[2] = 0;
+      menus[3] = 0;
+      menus[4] = 0;
+      drawMenuList(true, false, false, false, false);
     } else {
       // We draw Home page here:
       drawHomePage();
@@ -108,30 +117,50 @@ void loop() {
         menus[2] = 0;
         menus[3] = 0;
         menus[4] = 0;
+        tft.fillScreen(ST7735_BLACK); // Clear the display
+        drawHeader();
+        drawMenuListEmpty();
+        drawMenuList(true, false, false, false, false);
       } else if (counter == 2) {
         menus[0] = 0;
         menus[1] = 1;
         menus[2] = 0;
         menus[3] = 0;
         menus[4] = 0;
+        tft.fillScreen(ST7735_BLACK); // Clear the display
+        drawHeader();
+        drawMenuListEmpty();
+        drawMenuList(false, true, false, false, false);
       } else if (counter == 4) {
         menus[0] = 0;
         menus[1] = 0;
         menus[2] = 1;
         menus[3] = 0;
         menus[4] = 0;
+        tft.fillScreen(ST7735_BLACK); // Clear the display
+        drawHeader();
+        drawMenuListEmpty();
+        drawMenuList(false, false, true, false, false);
       } else if (counter == 6) {
         menus[0] = 0;
         menus[1] = 0;
         menus[2] = 0;
         menus[3] = 1;
         menus[4] = 0;
+        tft.fillScreen(ST7735_BLACK); // Clear the display
+        drawHeader();
+        drawMenuListEmpty();
+        drawMenuList(false, false, false, true, false);
       } else if (counter == 8) {
         menus[0] = 0;
         menus[1] = 0;
         menus[2] = 0;
         menus[3] = 0;
         menus[4] = 1;
+        tft.fillScreen(ST7735_BLACK); // Clear the display
+        drawHeader();
+        drawMenuListEmpty();
+        drawMenuList(false, false, false, false, true);
       }  else if (counter < 0) {
         menus[0] = 1;
         menus[1] = 0;
@@ -177,7 +206,9 @@ void loop() {
       }
       if (pages[0] == 1) {
         Serial.println("Return to Home Page.");
+        drawSelectedMenu(false, false, false, false, true);
         delay(1000); // If user holds, will be redirected back to Menu from Home, because home checks if user press the button!
+        tft.fillScreen(ST7735_BLACK); // Clear the display
       }
     }
   }
@@ -197,25 +228,80 @@ void loop() {
 
 }
 
+void drawMenuListEmpty() {
+  tft.setTextSize(1);
+  tft.setTextColor(ST7735_CYAN);
+  tft.setCursor(45, 25);
+  tft.print("Temp");
+  tft.setCursor(45, 45);
+  tft.print("Clock");
+  tft.setCursor(45, 65);
+  tft.print("Game 1");
+  tft.setCursor(45, 85);
+  tft.print("Game 2");
+  tft.setCursor(45, 105);
+  tft.print("Back");
+}
 
-void drawHomePage() {
-  // --------------------------TERMOMETER VALUES-------------------------------
+void drawSelectedMenu(bool menu1IsSelected, bool menu2IsSelected, bool menu3IsSelected, bool menu4IsSelected, bool menu5IsSelected) {
+  if (menu1IsSelected) {
+    tft.drawFastHLine(35, 20, 56, ST7735_GREEN);
+    tft.drawFastVLine(35, 20, 15, ST7735_GREEN);
+    tft.drawFastHLine(35, 35, 56, ST7735_GREEN);
+    tft.drawFastVLine(90, 20, 15, ST7735_GREEN);
+  } else if (menu2IsSelected) {
+    tft.drawFastHLine(35, 40, 56, ST7735_GREEN);
+    tft.drawFastVLine(35, 40, 15, ST7735_GREEN);
+    tft.drawFastHLine(35, 55, 56, ST7735_GREEN);
+    tft.drawFastVLine(90, 40, 15, ST7735_GREEN);
+  } else if (menu3IsSelected) {
+    tft.drawFastHLine(35, 60, 56, ST7735_GREEN);
+    tft.drawFastVLine(35, 60, 15, ST7735_GREEN);
+    tft.drawFastHLine(35, 75, 56, ST7735_GREEN);
+    tft.drawFastVLine(90, 60, 15, ST7735_GREEN);
+  } else if (menu4IsSelected) {
+    tft.drawFastHLine(35, 80, 56, ST7735_GREEN);
+    tft.drawFastVLine(35, 80, 15, ST7735_GREEN);
+    tft.drawFastHLine(35, 95, 56, ST7735_GREEN);
+    tft.drawFastVLine(90, 80, 15, ST7735_GREEN);
+  } else if (menu5IsSelected) {
+    tft.drawFastHLine(35, 100, 56, ST7735_GREEN);
+    tft.drawFastVLine(35, 100, 15, ST7735_GREEN);
+    tft.drawFastHLine(35, 115, 56, ST7735_GREEN);
+    tft.drawFastVLine(90, 100, 15, ST7735_GREEN);
+  }
+}
 
-  temp = 24;                           // TODO Change with the value from the sensor
+void drawMenuList(bool menu1IsSelected, bool menu2IsSelected, bool menu3IsSelected, bool menu4IsSelected, bool menu5IsSelected) {
+  if (menu1IsSelected) {
+    tft.drawFastHLine(35, 20, 56, ST7735_CYAN);
+    tft.drawFastVLine(35, 20, 15, ST7735_CYAN);
+    tft.drawFastHLine(35, 35, 56, ST7735_CYAN);
+    tft.drawFastVLine(90, 20, 15, ST7735_CYAN);
+  } else if (menu2IsSelected) {
+    tft.drawFastHLine(35, 40, 56, ST7735_CYAN);
+    tft.drawFastVLine(35, 40, 15, ST7735_CYAN);
+    tft.drawFastHLine(35, 55, 56, ST7735_CYAN);
+    tft.drawFastVLine(90, 40, 15, ST7735_CYAN);
+  } else if (menu3IsSelected) {
+    tft.drawFastHLine(35, 60, 56, ST7735_CYAN);
+    tft.drawFastVLine(35, 60, 15, ST7735_CYAN);
+    tft.drawFastHLine(35, 75, 56, ST7735_CYAN);
+    tft.drawFastVLine(90, 60, 15, ST7735_CYAN);
+  } else if (menu4IsSelected) {
+    tft.drawFastHLine(35, 80, 56, ST7735_CYAN);
+    tft.drawFastVLine(35, 80, 15, ST7735_CYAN);
+    tft.drawFastHLine(35, 95, 56, ST7735_CYAN);
+    tft.drawFastVLine(90, 80, 15, ST7735_CYAN);
+  } else if (menu5IsSelected) {
+    tft.drawFastHLine(35, 100, 56, ST7735_CYAN);
+    tft.drawFastVLine(35, 100, 15, ST7735_CYAN);
+    tft.drawFastHLine(35, 115, 56, ST7735_CYAN);
+    tft.drawFastVLine(90, 100, 15, ST7735_CYAN);
+  }
+}
 
- // tft.fillScreen(ST7735_BLACK);
-
-  tft.setCursor(40, 40);
-  tft.setTextSize(7);
-  printTermometerValues(temp);
-
-
-  // -----------------------TERMOMETER STATUS ICON----------------------------------
-
-
-  termometerStatusImage(ST7735_WHITE, ST7735_RED, 10, 10, map(temp, 1, 60, 1 , 29));
-
-
+void drawHeader() {
   // -----------------------BATTERY STATUS ICON----------------------------------
   tft.setTextSize(1);
   if (readVcc() < 3788) {                                    // 3788 ~ 3.69V on the Battery
@@ -223,9 +309,7 @@ void drawHomePage() {
   } else {
     batteryStatusImage(ST7735_WHITE, 105, 2, map(readVcc(), 3788, 4311, 1, 16), false);
   }
-
   // ------------------------CHARGING ICON BATTERY PERCENTAGE---------------------------------
-
   if (!true) {  // TODO hook up wire to the Charging module
 
   } else {
@@ -239,18 +323,24 @@ void drawHomePage() {
       tft.print("%");
     }
   }
-
   // -----------------------DATE AND TIME ----------------------------------
-
   tft.setCursor(2, 3);
   tft.setTextSize(1);
   tft.setTextColor(ST7735_WHITE);
   tft.print(getClock());  // Print Clock
-
   // Test print Clock on Serial Monitor TODO Delete it
+}
 
-
-
+void drawHomePage() {
+  drawHeader();
+  // --------------------------TERMOMETER VALUES-------------------------------
+  temp = 24;                           // TODO Change with the value from the sensor
+  // tft.fillScreen(ST7735_BLACK);
+  tft.setCursor(40, 40);
+  tft.setTextSize(7);
+  printTermometerValues(temp);
+  // -----------------------TERMOMETER STATUS ICON----------------------------------
+  termometerStatusImage(ST7735_WHITE, ST7735_RED, 10, 10, map(temp, 1, 60, 1 , 29));
 }
 
 void printTermometerValues(int temp) {
