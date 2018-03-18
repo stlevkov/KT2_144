@@ -93,6 +93,7 @@ void loop() {
       menus[3] = 0;
       menus[4] = 0;
       drawMenuList(true, false, false, false, false);
+      delay(1000); // Wait before show Menu, because if user little holds the button activate the first menu automaticly
     } else {
       // We draw Home page here:
       drawHomePage();
@@ -181,10 +182,76 @@ void loop() {
 
     // we try to get into the menu
     if (menus[0] == 1) {
+      // Serial.println("We are marked MENU 1 - GO TO TEMP CALIBRATION PAGE");
+      if (digitalRead(encoderSwitch) == LOW) {
+        pages[0] = 0;
+        pages[1] = 0;
+        pages[2] = 1;  // We choose TEMP Calibration Page
+        pages[3] = 0;
+        pages[4] = 0;
+        // ------ //
+        counter = 0;
+        menus[0] = 1;
+        menus[1] = 0;
+        menus[2] = 0;
+        menus[3] = 0;
+        menus[4] = 0;
+      }
+      if (pages[2] == 1) {
+        Serial.println("Go to Temp Calibration Page.");
+        drawSelectedMenu(true, false, false, false, false); // Draw selected Menu 1 for GREEN border
+        delay(1000); // If user holds, will be redirected back to Menu from Home, because home checks if user press the button!
+        tft.fillScreen(ST7735_BLACK); // Clear the display
+        drawHeader();
+      }
 
     }  else if (menus[1] == 1) {
+      // Serial.println("We are marked MENU 2 - GO TO CLOCK PAGE");
+      if (digitalRead(encoderSwitch) == LOW) {
+        pages[0] = 0;
+        pages[1] = 0;
+        pages[2] = 0;
+        pages[3] = 1;   // We choose CLOCK Calibration Page
+        pages[4] = 0;
+        // ------ //
+        counter = 0;
+        menus[0] = 1;
+        menus[1] = 0;
+        menus[2] = 0;
+        menus[3] = 0;
+        menus[4] = 0;
+      }
+      if (pages[3] == 1) {
+        Serial.println("Go to CLOCK Calibration Page.");
+        drawSelectedMenu(false, true, false, false, false); // Draw selected Menu 2 for GREEN border
+        delay(1000); // If user holds, will be redirected back to Menu from Home, because home checks if user press the button!
+        tft.fillScreen(ST7735_BLACK); // Clear the display
+        drawHeader();
+      }
 
     } else if (menus[2] == 1) {
+      // Serial.println("We are marked MENU 3 - GO TO Game 1 PAGE");
+      if (digitalRead(encoderSwitch) == LOW) {
+        pages[0] = 0;
+        pages[1] = 0;
+        pages[2] = 0;
+        pages[3] = 0;
+        pages[4] = 1;   // We choose Game 1 Page
+        // ------ //
+        counter = 0;
+        menus[0] = 1;
+        menus[1] = 0;
+        menus[2] = 0;
+        menus[3] = 0;
+        menus[4] = 0;
+      }
+      if (pages[4] == 1) {
+        Serial.println("Go to Game 1 Page.");
+        drawSelectedMenu(false, false, true, false, false); // Draw selected Menu 2 for GREEN border
+        delay(1000); // If user holds, will be redirected back to Menu from Home, because home checks if user press the button!
+        tft.fillScreen(ST7735_BLACK); // Clear the display
+        drawHeader();
+      }
 
     } else if (menus[3] == 1) {
 
@@ -214,15 +281,17 @@ void loop() {
   }
   if (pages[2] == 1) {
     Serial.println("We are in Temp Page");
-    Serial.println("Drawing temp page");
+    //   Serial.println("Drawing temp page");
+
   }
   if (pages[3] == 1) {
     Serial.println("We are in Clock ajust Page");
-    Serial.println("Drawing clock ajust page");
+    //  Serial.println("Drawing clock ajust page");
   }
   if (pages[4] == 1) {
     Serial.println("We are in Game 0 - 100 with Rotary Encoder Page");
-    Serial.println("Drawing Game 0 - 100 with Rotary Encoder page");
+    // Serial.println("Drawing Game 0 - 100 with Rotary Encoder page");
+
   }
 
 
