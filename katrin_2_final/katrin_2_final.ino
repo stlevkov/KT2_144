@@ -3,6 +3,8 @@
 #include <DS1307RTC.h> // Clock library
 
 int temp = 6; // define the digital temperature sensor interface
+int tempCalibration = 0; // define the calibration offset between (+ and -)
+int lastTempCalibrationState = 0;
 int val ; // define numeric variables val
 
 #include <Adafruit_GFX.h>    // Core graphics library
@@ -69,11 +71,14 @@ void setup() {
   pages[3] = 0;   // Home Page + Clock ajust
   pages[4] = 0;  // Home Page + Game 0 - 100 with Rotary Encoder
 
+  temp = 24;
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-
+  // TODO ALWAYS GET THE NEW VALUES FOR - TEMP + CALIBRATION
+  temp = 24;
+  temp = temp + tempCalibration;
   if (pages[0] == 1) {
     Serial.println("We are in Home Page");
     if (digitalRead(encoderSwitch) == LOW) {
@@ -99,7 +104,7 @@ void loop() {
       drawHomePage();
     }
   }
-  if (pages[1] == 1) {
+  if (pages[1] == 1) { // CHOOSEN IS MENU PAGE WE TRY TO GET THE ROTARY ENCODER INFORMATION
     Serial.println("Choosen Menu: " + (String) menus[0] + " " + (String) menus[1] + " " + (String) menus[2] + " " + (String) menus[3] + " " + (String) menus[4]);
     aState = digitalRead(outputA); // Reads the "current" state of the outputA
     bState = digitalRead(outputB);
@@ -111,8 +116,8 @@ void loop() {
       } else {
         counter --;
       }
-      // Serial.println(counter);
-      if (counter == 0) {
+      //  The counter is from 0, 2, 4, 6, 8
+      if (counter == 0) {  // WE MARK MENU 1 - TEMP
         menus[0] = 1;
         menus[1] = 0;
         menus[2] = 0;
@@ -122,7 +127,7 @@ void loop() {
         drawHeader();
         drawMenuListEmpty();
         drawMenuList(true, false, false, false, false);
-      } else if (counter == 2) {
+      } else if (counter == 2) {     //  WE MARK MENU 2 CLOCK
         menus[0] = 0;
         menus[1] = 1;
         menus[2] = 0;
@@ -132,7 +137,7 @@ void loop() {
         drawHeader();
         drawMenuListEmpty();
         drawMenuList(false, true, false, false, false);
-      } else if (counter == 4) {
+      } else if (counter == 4) {    // WE MARK MENU 3 GAME 1
         menus[0] = 0;
         menus[1] = 0;
         menus[2] = 1;
@@ -142,7 +147,7 @@ void loop() {
         drawHeader();
         drawMenuListEmpty();
         drawMenuList(false, false, true, false, false);
-      } else if (counter == 6) {
+      } else if (counter == 6) {     // WE MARK MENU 4 GAME 2
         menus[0] = 0;
         menus[1] = 0;
         menus[2] = 0;
@@ -152,7 +157,7 @@ void loop() {
         drawHeader();
         drawMenuListEmpty();
         drawMenuList(false, false, false, true, false);
-      } else if (counter == 8) {
+      } else if (counter == 8) {      // WE MARK MENU 5 BACK
         menus[0] = 0;
         menus[1] = 0;
         menus[2] = 0;
@@ -202,7 +207,19 @@ void loop() {
         drawSelectedMenu(true, false, false, false, false); // Draw selected Menu 1 for GREEN border
         delay(1000); // If user holds, will be redirected back to Menu from Home, because home checks if user press the button!
         tft.fillScreen(ST7735_BLACK); // Clear the display
+        counter = 0;
+        tempCalibration = 0;
         drawHeader();
+        tft.setCursor(40, 40);
+        tft.setTextSize(7);
+        printTermometerValues(tempCalibration);
+        tft.setCursor(15, 20);
+        tft.setTextSize(1);
+        tft.setTextColor(ST7735_GREEN);
+        tft.print("Temp Calibration");
+        tft.setCursor(20, 100);
+        tft.setTextColor(ST7735_WHITE);
+        tft.print("Click to save.");
       }
 
     }  else if (menus[1] == 1) {
@@ -250,7 +267,6 @@ void loop() {
         drawSelectedMenu(false, false, true, false, false); // Draw selected Menu 2 for GREEN border
         delay(1000); // If user holds, will be redirected back to Menu from Home, because home checks if user press the button!
         tft.fillScreen(ST7735_BLACK); // Clear the display
-        drawHeader();
       }
 
     } else if (menus[3] == 1) {
@@ -276,13 +292,52 @@ void loop() {
         drawSelectedMenu(false, false, false, false, true);
         delay(1000); // If user holds, will be redirected back to Menu from Home, because home checks if user press the button!
         tft.fillScreen(ST7735_BLACK); // Clear the display
+
       }
     }
   }
   if (pages[2] == 1) {
-    Serial.println("We are in Temp Page");
-    //   Serial.println("Drawing temp page");
-
+    // Serial.println("We are in Temp Page");
+    // -----------------------ROTARY ENCODER LOGIC----------------------------------
+    aState = digitalRead(outputA); // Reads the "current" state of the outputA
+    bState = digitalRead(outputB);
+    // If the previous and the current state of the outputA are different, that means a Pulse has occured
+    if (aState != aLastState) {
+      // If the outputB state is different to the outputA state, that means the encoder is rotating clockwise
+      if (bState != aState) {
+        counter ++;
+      } else {
+        counter --;
+      }
+      //  The counter is from 0, 2, 4, 6, 8
+      if (counter == 0) {  // offset is equals to 0
+        tempCalibration = 0;
+      } else if (counter == 2) {     //  WE MARK MENU 2 CLOCK
+        tempCalibration = 1;
+      } else if (counter == 4) {    // WE MARK MENU 3 GAME 1
+        tempCalibration = 2;
+      } else if (counter == 6) {     // WE MARK MENU 4 GAME 2
+        tempCalibration = 3;
+      } else if (counter == 8) {      // WE MARK MENU 5 BACK
+        tempCalibration = 4;
+      } else if (counter > 8) {
+        counter = 8;
+      } else if (counter < 0) {
+        if (counter == -2) {
+          tempCalibration = -1;
+        } else if (counter == -4) {
+          tempCalibration = -2;
+        } else if (counter == -6) {
+          tempCalibration = -3;
+        } else if (counter == -8) {
+          tempCalibration = -4;
+        } else if (counter < -8) {
+          counter = -8;
+        }
+      }
+    }
+    aLastState = aState; // Updates the previous state of the outputA with the current state
+    drawTempPage();
   }
   if (pages[3] == 1) {
     Serial.println("We are in Clock ajust Page");
@@ -295,6 +350,54 @@ void loop() {
   }
 
 
+}
+
+void drawTempPage() {
+  // --------------------------TERMOMETER CALIBRATION VALUES-------------------------------
+  Serial.print("Temp Calibration: ");
+  Serial.print(tempCalibration);
+  Serial.print(" , counter: ");
+  Serial.print(counter);
+  Serial.println("");
+  if (lastTempCalibrationState != tempCalibration) {
+    tft.fillScreen(ST7735_BLACK); // Clear the display
+    drawHeader();
+    tft.setCursor(40, 40);
+    tft.setTextSize(7);
+    printTermometerValues(tempCalibration);
+    tft.setCursor(15, 20);
+    tft.setTextSize(1);
+    tft.setTextColor(ST7735_GREEN);
+    tft.print("Temp Calibration");
+    tft.setCursor(20, 100);
+    tft.setTextColor(ST7735_WHITE);
+    tft.print("Click to save.");
+    lastTempCalibrationState = tempCalibration;
+  }
+
+  if (digitalRead(encoderSwitch) == LOW) {
+    Serial.println("Button pressed!");
+    Serial.println("Saving the Calibration Value of the Temperature sensor!");
+    Serial.println(" - In the beggining of the loop the temp value will be refreshed.");
+    tft.fillScreen(ST7735_BLACK); // Clear the display
+    drawHeader();
+    tft.setCursor(40, 40);
+    tft.setTextSize(7);
+    printTermometerValues(tempCalibration);
+    tft.setTextSize(1);
+    tft.setCursor(15, 100);
+    
+    tft.setTextColor(ST7735_GREEN);
+    tft.print("New value Saved.");
+    delay(1000); // Wait before show Menu, because if user little holds the button activate the first menu automaticly
+    pages[0] = 1;   // We return to Home page
+    pages[1] = 0;
+    pages[2] = 0;
+    pages[3] = 0;
+    pages[4] = 0;
+    tft.fillScreen(ST7735_BLACK); // Clear the display
+    drawHomePage();
+  }
 }
 
 void drawMenuListEmpty() {
@@ -403,7 +506,7 @@ void drawHeader() {
 void drawHomePage() {
   drawHeader();
   // --------------------------TERMOMETER VALUES-------------------------------
-  temp = 24;                           // TODO Change with the value from the sensor
+  // TODO Change with the value from the sensor
   // tft.fillScreen(ST7735_BLACK);
   tft.setCursor(40, 40);
   tft.setTextSize(7);
