@@ -41,6 +41,13 @@ int aState;
 int bState;
 int aLastState;
 
+//Define Days for Clock
+const char *monthName[12] = {
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+};
+tmElements_t tm;   // The importent thing here is this Class for RTC lib
+
 
 // Menu variables
 int pages[] = {0, 0, 0, 0, 0};  // Array menus holding Pages
@@ -48,12 +55,12 @@ int menus[] = {1, 0, 0, 0, 0};  // Array menus holding positions in the Menu Lis
 
 
 void setup() {
-  // put your setup code here, to run once:
+  // Boot up:
   Serial.begin(115200);
   pinMode (outputA, INPUT); // Define outputA to be INPUT from Rotary Encoder
   pinMode (outputB, INPUT); // Define outputB to be INPUT from Rotary Encoder
   pinMode (encoderSwitch, OUTPUT); // Define Rotary Encoder Click switch to be output
-  digitalWrite(encoderSwitch, HIGH);
+  digitalWrite(encoderSwitch, HIGH);  //
 
   // Reads the initial state of the outputA
   aLastState = digitalRead(outputA);
@@ -62,6 +69,23 @@ void setup() {
   tft.initR(INITR_144GREENTAB);   // initialize a ST7735S chip, black tab
 
   // Set first background to black
+  tft.fillScreen(ST7735_BLACK);
+
+
+  // This info is for Boot up, showing the last firmware compile date & time
+  tft.setTextSize(1);
+  tft.setTextColor(ST7735_GREEN);
+  tft.setCursor(5, 30);
+  tft.print("Skl Electronics");
+  delay(1000);
+  tft.setCursor(5, 40);
+  tft.print("Firmware date");
+  tft.setCursor(5, 60);
+  tft.print(__DATE__);
+  tft.setCursor(5, 80);
+  tft.print(__TIME__);
+
+  delay(2000);
   tft.fillScreen(ST7735_BLACK);
 
 
@@ -244,6 +268,10 @@ void loop() {
         delay(1000); // If user holds, will be redirected back to Menu from Home, because home checks if user press the button!
         tft.fillScreen(ST7735_BLACK); // Clear the display
         drawHeader();
+        tft.setCursor(7, 20);
+        tft.setTextSize(1);
+        tft.setTextColor(ST7735_GREEN);
+        tft.print("Date & Time Adjust");
       }
 
     } else if (menus[2] == 1) {
@@ -340,8 +368,37 @@ void loop() {
     drawTempPage();
   }
   if (pages[3] == 1) {
-    Serial.println("We are in Clock ajust Page");
+    //  Serial.println("We are in Clock ajust Page");
     //  Serial.println("Drawing clock ajust page");
+
+    // get the date and time the compiler was run
+
+    bool parse = false;
+    bool config = false;
+
+    // get the date and time the compiler was run
+    if (getDate(__DATE__) && getTime(__TIME__)) {
+      parse = true;
+      // and configure the RTC with this info
+
+    }
+
+    if (parse) {
+      tft.setCursor(5, 40);
+      tft.setTextSize(2);
+      tft.setTextColor(ST7735_BLUE);
+      tft.print("Connected!");
+      Serial.println("Connected!");
+    } else {
+      tft.fillScreen(ST7735_BLACK); // Clear the display
+      tft.setCursor(5, 40);
+      tft.setTextSize(2);
+      tft.setTextColor(ST7735_BLUE);
+      tft.print("Please connect to PC!");
+      Serial.println("Please connect to PC");
+    }
+
+
   }
   if (pages[4] == 1) {
     Serial.println("We are in Game 0 - 100 with Rotary Encoder Page");
@@ -386,7 +443,7 @@ void drawTempPage() {
     printTermometerValues(tempCalibration);
     tft.setTextSize(1);
     tft.setCursor(15, 100);
-    
+
     tft.setTextColor(ST7735_GREEN);
     tft.print("New value Saved.");
     delay(1000); // Wait before show Menu, because if user little holds the button activate the first menu automaticly
@@ -597,6 +654,39 @@ void batteryStatusImage(uint16_t color1, uint16_t x, uint16_t y, uint16_t fillUp
   }
 }
 
+void setTime() {
+  bool parse = false;
+  bool config = false;
+
+  // get the date and time the compiler was run
+  if (getDate(__DATE__) && getTime(__TIME__)) {
+    parse = true;
+    // and configure the RTC with this info
+    if (RTC.write(tm)) {
+      config = true;
+    }
+  }
+
+  Serial.begin(9600);
+  while (!Serial) ; // wait for Arduino Serial Monitor
+  delay(200);
+  if (parse && config) {
+    Serial.print("DS1307 configured Time=");
+    Serial.print(__TIME__);
+    Serial.print(", Date=");
+    Serial.println(__DATE__);
+  } else if (parse) {
+    Serial.println("DS1307 Communication Error :-{");
+    Serial.println("Please check your circuitry");
+  } else {
+    Serial.print("Could not parse info from the compiler, Time=\"");
+    Serial.print(__TIME__);
+    Serial.print("\", Date=\"");
+    Serial.print(__DATE__);
+    Serial.println("\"");
+  }
+}
+
 String getClock() {
   String msg = "";
   tmElements_t tm;
@@ -605,21 +695,7 @@ String getClock() {
     msg += tm.Hour;
     msg += ":";
     msg += tm.Minute;
-    /*
-      Serial.print("Ok, Time = ");
-      print2digits(tm.Hour);
-      Serial.write(':');
-      print2digits(tm.Minute);
-      Serial.write(':');
-      print2digits(tm.Second);
-      Serial.print(", Date (D/M/Y) = ");
-      Serial.print(tm.Day);
-      Serial.write('/');
-      Serial.print(tm.Month);
-      Serial.write('/');
-      Serial.print(tmYearToCalendar(tm.Year));
-      Serial.println();
-    */
+
   } else {
     if (RTC.chipPresent()) {
       Serial.println("The DS1307 is stopped.  Please run the SetTime");
@@ -632,6 +708,31 @@ String getClock() {
     delay(9000);
   }
   return msg;
+}
 
+bool getTime(const char *str) {
+  int Hour, Min, Sec;
+
+  if (sscanf(str, "%d:%d:%d", &Hour, &Min, &Sec) != 3) return false;
+  tm.Hour = Hour;
+  tm.Minute = Min;
+  tm.Second = Sec;
+  return true;
+}
+
+bool getDate(const char *str) {
+  char Month[12];
+  int Day, Year;
+  uint8_t monthIndex;
+
+  if (sscanf(str, "%s %d %d", Month, &Day, &Year) != 3) return false;
+  for (monthIndex = 0; monthIndex < 12; monthIndex++) {
+    if (strcmp(Month, monthName[monthIndex]) == 0) break;
+  }
+  if (monthIndex >= 12) return false;
+  tm.Day = Day;
+  tm.Month = monthIndex + 1;
+  tm.Year = CalendarYrToTm(Year);
+  return true;
 }
 
