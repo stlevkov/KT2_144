@@ -79,7 +79,7 @@ void setup() {
   tft.print("Skl Electronics");
   delay(1000);
   tft.setCursor(5, 40);
-  tft.print("Firmware date");
+  tft.print("Last Firmware date");
   tft.setCursor(5, 60);
   tft.print(__DATE__);
   tft.setCursor(5, 80);
@@ -96,6 +96,13 @@ void setup() {
   pages[4] = 0;  // Home Page + Game 0 - 100 with Rotary Encoder
 
   temp = 24;
+
+  Serial.println("Configuring time: 19:29:30");
+  configureTime(20,13,00);
+  delay(2000);
+  Serial.println("Time Configured");
+  delay(1000);
+
 }
 
 void loop() {
@@ -654,38 +661,7 @@ void batteryStatusImage(uint16_t color1, uint16_t x, uint16_t y, uint16_t fillUp
   }
 }
 
-void setTime() {
-  bool parse = false;
-  bool config = false;
 
-  // get the date and time the compiler was run
-  if (getDate(__DATE__) && getTime(__TIME__)) {
-    parse = true;
-    // and configure the RTC with this info
-    if (RTC.write(tm)) {
-      config = true;
-    }
-  }
-
-  Serial.begin(9600);
-  while (!Serial) ; // wait for Arduino Serial Monitor
-  delay(200);
-  if (parse && config) {
-    Serial.print("DS1307 configured Time=");
-    Serial.print(__TIME__);
-    Serial.print(", Date=");
-    Serial.println(__DATE__);
-  } else if (parse) {
-    Serial.println("DS1307 Communication Error :-{");
-    Serial.println("Please check your circuitry");
-  } else {
-    Serial.print("Could not parse info from the compiler, Time=\"");
-    Serial.print(__TIME__);
-    Serial.print("\", Date=\"");
-    Serial.print(__DATE__);
-    Serial.println("\"");
-  }
-}
 
 String getClock() {
   String msg = "";
@@ -710,7 +686,16 @@ String getClock() {
   return msg;
 }
 
-bool getTime(const char *str) {
+void configureTime(int Hour, int Min, int Sec) {   // Configure RTCDS1307 Clock module by using #include <TimeLib.h>   // Needed by CLock ; #include <DS1307RTC.h> // Clock library
+  tm.Hour = Hour;
+  tm.Minute = Min;
+  tm.Second = Sec;
+  RTC.write(tm);
+}
+
+
+bool getTime(const char *str)
+{
   int Hour, Min, Sec;
 
   if (sscanf(str, "%d:%d:%d", &Hour, &Min, &Sec) != 3) return false;
@@ -720,7 +705,8 @@ bool getTime(const char *str) {
   return true;
 }
 
-bool getDate(const char *str) {
+bool getDate(const char *str)
+{
   char Month[12];
   int Day, Year;
   uint8_t monthIndex;
@@ -735,4 +721,6 @@ bool getDate(const char *str) {
   tm.Year = CalendarYrToTm(Year);
   return true;
 }
+
+
 
