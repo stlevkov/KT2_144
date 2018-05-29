@@ -37,10 +37,16 @@ float p = 3.1415926;
 
 int switchCounter = 0;
 int counter = 0;
-int secondCounter = 0;   // Needed by Clock Adjustion Page for getting EVEN 0,2,4 untill 24 and 60
+int hoursCounter = 0;   // Needed by Clock Adjustion Page for getting EVEN 0,2,4 untill 24 for hours
+int minutesCounter = 0; // Needed by Clock Adjustion Page for getting EVEN 0,2,4 untill 60 for minutes
+
 int aState;
 int bState;
 int aLastState;
+
+// Used by Clock Adjustion Page for selecting the current position and colored it by defined color in the methods bellow
+int selectedClockIndex = 0;   // Posibble values for Clock Adjust Page: 0 - hours, 1 - minutes, 2 - day, 3 - month, 4 - year
+
 
 //Define Days for Clock
 const char *monthName[12] = {
@@ -288,12 +294,33 @@ void loop() {
         tft.setTextSize(1);
         tft.setTextColor(ST7735_BLUE);
         tft.print("Rotate to adjust");
+        tft.setCursor(20, 100);
+        tft.setTextColor(ST7735_WHITE);
+        tft.print("Click to save.");
 
         tmElements_t tm;                         // Initialize Time before the loop in the page
         RTC.read(tm);                            // Because when adjusting - the time keep changing
 
         hours = tm.Hour;                         // Prepare the global variables for adjusting
         minutes = tm.Minute;                     // Prepare the global variables for adjusting
+
+        hoursCounter = hours;                    // When Adjust - starts from where the current time is
+        minutesCounter = minutes;                // When Adjust - starts from where the current time is
+        selectedClockIndex = 0;                  // We select the hours to adjust first when reaching the clock page
+        // Display first init before the first Rotation of the button to show the clock
+        tft.setCursor(20, 50);
+        tft.setTextSize(3);
+        tft.setTextColor(ST7735_YELLOW);
+        tft.print(hours);
+
+        tft.setTextColor(ST7735_WHITE);
+        tft.setCursor(70, 50);
+        tft.print(minutes);
+
+        tft.setTextColor(ST7735_WHITE);
+        tft.setCursor(55, 50);
+        tft.print(":");
+
       }
 
     } else if (menus[2] == 1) {
@@ -391,48 +418,275 @@ void loop() {
   }
   if (pages[3] == 1) {
     Serial.println("We are in Clock ajust Page");
+    Serial.print("selectedClockIndex: ");
+    Serial.print(selectedClockIndex);
+    Serial.println("");
     // -----------------------ROTARY ENCODER LOGIC----------------------------------
     aState = digitalRead(outputA); // Reads the "current" state of the outputA
     bState = digitalRead(outputB);
-    // If the previous and the current state of the outputA are different, that means a Pulse has occured
 
-    if (aState != aLastState) {
-      // If the outputB state is different to the outputA state, that means the encoder is rotating clockwise
-      if (bState != aState) {
-        counter ++;
-        if (((counter & 1) == 0)) {
-          secondCounter ++;
-          hours = secondCounter;
-        }
-      } else {
-        counter --;
-        if (((counter & 1) == 0)) {
-          secondCounter --;
-          hours = secondCounter;
+    // We first read the current index - See possible values defined before setup()
+    if (selectedClockIndex == 0) {    // We adjust hours
+      // If the previous and the current state of the outputA are different, that means a Pulse has occured
+
+      if (aState != aLastState) {
+        // If the outputB state is different to the outputA state, that means the encoder is rotating clockwise
+        if (bState != aState) {
+          if (hoursCounter >= 23) {
+            hoursCounter = -1;
+          } else {
+            counter ++;
+          }
+          if (((counter & 1) == 0)) {
+            hoursCounter ++;
+            hours = hoursCounter;
+
+            tft.fillScreen(ST7735_BLACK); // Clear the display
+            drawHeader();
+            tft.setCursor(15, 20);
+            tft.setTextSize(1);
+            tft.setTextColor(ST7735_YELLOW);
+            tft.print("DATE & TIME PAGE");
+            tft.setCursor(15, 30);
+            tft.setTextSize(1);
+            tft.setTextColor(ST7735_BLUE);
+            tft.print("Rotate to adjust");
+            tft.setCursor(20, 100);
+            tft.setTextColor(ST7735_WHITE);
+            tft.print("Click to save.");
+
+            tft.setCursor(20, 50);
+            tft.setTextSize(3);
+            tft.setTextColor(ST7735_YELLOW);
+            tft.print(hours);
+
+            tft.setTextColor(ST7735_WHITE);
+            tft.setCursor(70, 50);
+            tft.print(minutes);
+
+            tft.setTextColor(ST7735_WHITE);
+            tft.setCursor(55, 50);
+            tft.print(":");
+          }
+        } else {
+          if (hoursCounter <= 0) {
+            hoursCounter = 24;
+          } else {
+            counter --;
+          }
+          if (((counter & 1) == 0)) {
+            hoursCounter --;
+            hours = hoursCounter;
+
+            tft.fillScreen(ST7735_BLACK); // Clear the display
+            drawHeader();
+            tft.setCursor(15, 20);
+            tft.setTextSize(1);
+            tft.setTextColor(ST7735_YELLOW);
+            tft.print("DATE & TIME PAGE");
+            tft.setCursor(15, 30);
+            tft.setTextSize(1);
+            tft.setTextColor(ST7735_BLUE);
+            tft.print("Rotate to adjust");
+            tft.setCursor(20, 100);
+            tft.setTextColor(ST7735_WHITE);
+            tft.print("Click to save.");
+
+            tft.setCursor(20, 50);
+            tft.setTextSize(3);
+            tft.setTextColor(ST7735_YELLOW);
+            tft.print(hours);
+
+            tft.setTextColor(ST7735_WHITE);
+            tft.setCursor(70, 50);
+            tft.print(minutes);
+
+            tft.setTextColor(ST7735_WHITE);
+            tft.setCursor(55, 50);
+            tft.print(":");
+
+          }
+
         }
       }
+
+      Serial.println(counter);
+      Serial.println(hoursCounter);
+
+
+
+      // Click to save the current position
+      if (digitalRead(encoderSwitch) == LOW) {
+        counter = 0;
+        hoursCounter = 0;
+        selectedClockIndex ++;                                      // going to adjust minutes
+        Serial.println("selectedClockIndex changed!");
+
+        // Change colors of the numbers - Color minutes
+        tft.fillScreen(ST7735_BLACK); // Clear the display
+        drawHeader();
+        tft.setCursor(15, 20);
+        tft.setTextSize(1);
+        tft.setTextColor(ST7735_YELLOW);
+        tft.print("DATE & TIME PAGE");
+        tft.setCursor(15, 30);
+        tft.setTextSize(1);
+        tft.setTextColor(ST7735_BLUE);
+        tft.print("Rotate to adjust");
+        tft.setCursor(20, 100);
+        tft.setTextColor(ST7735_WHITE);
+        tft.print("Click to save.");
+
+        tft.setCursor(20, 50);
+        tft.setTextSize(3);
+        tft.setTextColor(ST7735_WHITE);              // Here   Colored color for choosen is Yellow
+        tft.print(hours);
+
+        tft.setTextColor(ST7735_YELLOW);            // Here    Colored color for choosen is Yellow
+        tft.setCursor(70, 50);
+        tft.print(minutes);
+
+        tft.setTextColor(ST7735_WHITE);
+        tft.setCursor(55, 50);
+        tft.print(":");
+        delay(1000);
+      }
+
+    } else if (selectedClockIndex == 1) {  // We adjust minutes
+
+
+      // If the previous and the current state of the outputA are different, that means a Pulse has occured
+      if (aState != aLastState) {
+        // If the outputB state is different to the outputA state, that means the encoder is rotating clockwise
+        if (bState != aState) {
+          if (minutesCounter >= 59) {
+            minutesCounter = -1;
+          } else {
+            counter ++;
+          }
+          if (((counter & 1) == 0)) {
+            minutesCounter ++;
+            minutes = minutesCounter;
+
+            tft.fillScreen(ST7735_BLACK); // Clear the display
+            drawHeader();
+            tft.setCursor(15, 20);
+            tft.setTextSize(1);
+            tft.setTextColor(ST7735_YELLOW);
+            tft.print("DATE & TIME PAGE");
+            tft.setCursor(15, 30);
+            tft.setTextSize(1);
+            tft.setTextColor(ST7735_BLUE);
+            tft.print("Rotate to adjust");
+            tft.setCursor(20, 100);
+            tft.setTextColor(ST7735_WHITE);
+            tft.print("Click to save.");
+
+            tft.setCursor(20, 50);
+            tft.setTextSize(3);
+            tft.setTextColor(ST7735_WHITE);
+            tft.print(hours);
+
+            tft.setTextColor(ST7735_YELLOW);
+            tft.setCursor(70, 50);
+            tft.print(minutes);
+
+            tft.setTextColor(ST7735_WHITE);
+            tft.setCursor(55, 50);
+            tft.print(":");
+          }
+        } else {
+          if (minutesCounter <= 0) {
+            minutesCounter = 60;
+          } else {
+            counter --;
+          }
+          if (((counter & 1) == 0)) {
+            minutesCounter --;
+            minutes = minutesCounter;
+
+            tft.fillScreen(ST7735_BLACK); // Clear the display
+            drawHeader();
+            tft.setCursor(15, 20);
+            tft.setTextSize(1);
+            tft.setTextColor(ST7735_YELLOW);
+            tft.print("DATE & TIME PAGE");
+            tft.setCursor(15, 30);
+            tft.setTextSize(1);
+            tft.setTextColor(ST7735_BLUE);
+            tft.print("Rotate to adjust");
+            tft.setCursor(20, 100);
+            tft.setTextColor(ST7735_WHITE);
+            tft.print("Click to save.");
+
+            tft.setCursor(20, 50);
+            tft.setTextSize(3);
+            tft.setTextColor(ST7735_WHITE);
+            tft.print(hours);
+
+            tft.setTextColor(ST7735_YELLOW);
+            tft.setCursor(70, 50);
+            tft.print(minutes);
+
+            tft.setTextColor(ST7735_WHITE);
+            tft.setCursor(55, 50);
+            tft.print(":");
+
+          }
+
+        }
+      }
+
+      Serial.println(counter);
+      Serial.println(minutesCounter);
+
+
+
+      // Click to save the current position
+      if (digitalRead(encoderSwitch) == LOW) {
+        //    selectedClockIndex ++;                                      // going to adjust days
+        // TODO but for now we only adjust time!!!
+        configureTime(hours, minutes, seconds);
+        Serial.println("selectedClockIndex changed!");
+
+        // Change colors of the numbers - Color minutes
+        tft.fillScreen(ST7735_BLACK); // Clear the display
+        drawHeader();
+
+        tft.setCursor(20, 50);
+        tft.setTextSize(3);
+        tft.setTextColor(ST7735_WHITE);              // Here   Colored color for choosen is Yellow
+        tft.print(hours);
+
+        tft.setTextColor(ST7735_WHITE);            // Here    Colored color for choosen is Yellow
+        tft.setCursor(70, 50);
+        tft.print(minutes);
+
+        tft.setTextColor(ST7735_WHITE);
+        tft.setCursor(55, 50);
+        tft.print(":");
+
+        // TODO - Display text - New Values Saved
+        tft.setTextSize(1);
+        tft.setCursor(15, 100);
+
+        tft.setTextColor(ST7735_GREEN);
+        tft.print("New value Saved.");
+        delay(3000); // Wait before show Menu, because if user little holds the button activate the first menu automaticly
+        pages[0] = 1;   // We return to Home page
+        pages[1] = 0;
+        pages[2] = 0;
+        pages[3] = 0;
+        pages[4] = 0;
+        tft.fillScreen(ST7735_BLACK); // Clear the display
+        drawHomePage();
+
+
+      }
+
     }
 
 
-    Serial.println(counter);
-    Serial.println(secondCounter);
-
-    /*
-      tft.fillScreen(ST7735_BLACK);
-      tft.setCursor(20, 50);
-      tft.setTextSize(3);
-      tft.setTextColor(ST7735_YELLOW);
-      tft.print(hours);
-
-      tft.setTextColor(ST7735_WHITE);
-      tft.setCursor(70, 50);
-      tft.print(minutes);
-
-      tft.setTextColor(ST7735_WHITE);
-      tft.setCursor(55, 50);
-      tft.print(":");
-
-    */
 
     aLastState = aState; // Updates the previous state of the outputA with the current state
   }
