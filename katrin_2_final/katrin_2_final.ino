@@ -37,6 +37,7 @@ float p = 3.1415926;
 
 int switchCounter = 0;
 int counter = 0;
+int secondCounter = 0;   // Needed by Clock Adjustion Page for getting EVEN 0,2,4 untill 24 and 60
 int aState;
 int bState;
 int aLastState;
@@ -48,6 +49,9 @@ const char *monthName[12] = {
 };
 tmElements_t tm;   // The importent thing here is this Class for RTC lib
 
+int hours;
+int minutes;
+int seconds;
 
 // Menu variables
 int pages[] = {0, 0, 0, 0, 0};  // Array menus holding Pages
@@ -76,16 +80,16 @@ void setup() {
   tft.setTextSize(1);
   tft.setTextColor(ST7735_GREEN);
   tft.setCursor(5, 30);
-  tft.print("Skl Electronics");
+  tft.print("SKL Electronics");
   delay(1000);
-  tft.setCursor(5, 40);
-  tft.print("Last Firmware date");
+  tft.setCursor(5, 50);
+  tft.print("Firmware date:");
   tft.setCursor(5, 60);
   tft.print(__DATE__);
   tft.setCursor(5, 80);
   tft.print(__TIME__);
 
-  delay(2000);
+  delay(3000);
   tft.fillScreen(ST7735_BLACK);
 
 
@@ -97,12 +101,13 @@ void setup() {
 
   temp = 24;
 
-  Serial.println("Configuring time: 19:29:30");
-  configureTime(20,13,00);
-  delay(2000);
-  Serial.println("Time Configured");
-  delay(1000);
-
+  /*
+    Serial.println("Configuring time: 19:29:30");
+    configureTime(20,13,00);
+    delay(2000);
+    Serial.println("Time Configured");
+    delay(1000);
+  */
 }
 
 void loop() {
@@ -275,10 +280,20 @@ void loop() {
         delay(1000); // If user holds, will be redirected back to Menu from Home, because home checks if user press the button!
         tft.fillScreen(ST7735_BLACK); // Clear the display
         drawHeader();
-        tft.setCursor(7, 20);
+        tft.setCursor(15, 20);
         tft.setTextSize(1);
-        tft.setTextColor(ST7735_GREEN);
-        tft.print("Date & Time Adjust");
+        tft.setTextColor(ST7735_YELLOW);
+        tft.print("DATE & TIME PAGE");
+        tft.setCursor(15, 30);
+        tft.setTextSize(1);
+        tft.setTextColor(ST7735_BLUE);
+        tft.print("Rotate to adjust");
+
+        tmElements_t tm;                         // Initialize Time before the loop in the page
+        RTC.read(tm);                            // Because when adjusting - the time keep changing
+
+        hours = tm.Hour;                         // Prepare the global variables for adjusting
+        minutes = tm.Minute;                     // Prepare the global variables for adjusting
       }
 
     } else if (menus[2] == 1) {
@@ -375,37 +390,51 @@ void loop() {
     drawTempPage();
   }
   if (pages[3] == 1) {
-    //  Serial.println("We are in Clock ajust Page");
-    //  Serial.println("Drawing clock ajust page");
+    Serial.println("We are in Clock ajust Page");
+    // -----------------------ROTARY ENCODER LOGIC----------------------------------
+    aState = digitalRead(outputA); // Reads the "current" state of the outputA
+    bState = digitalRead(outputB);
+    // If the previous and the current state of the outputA are different, that means a Pulse has occured
 
-    // get the date and time the compiler was run
-
-    bool parse = false;
-    bool config = false;
-
-    // get the date and time the compiler was run
-    if (getDate(__DATE__) && getTime(__TIME__)) {
-      parse = true;
-      // and configure the RTC with this info
-
-    }
-
-    if (parse) {
-      tft.setCursor(5, 40);
-      tft.setTextSize(2);
-      tft.setTextColor(ST7735_BLUE);
-      tft.print("Connected!");
-      Serial.println("Connected!");
-    } else {
-      tft.fillScreen(ST7735_BLACK); // Clear the display
-      tft.setCursor(5, 40);
-      tft.setTextSize(2);
-      tft.setTextColor(ST7735_BLUE);
-      tft.print("Please connect to PC!");
-      Serial.println("Please connect to PC");
+    if (aState != aLastState) {
+      // If the outputB state is different to the outputA state, that means the encoder is rotating clockwise
+      if (bState != aState) {
+        counter ++;
+        if (((counter & 1) == 0)) {
+          secondCounter ++;
+          hours = secondCounter;
+        }
+      } else {
+        counter --;
+        if (((counter & 1) == 0)) {
+          secondCounter --;
+          hours = secondCounter;
+        }
+      }
     }
 
 
+    Serial.println(counter);
+    Serial.println(secondCounter);
+
+    /*
+      tft.fillScreen(ST7735_BLACK);
+      tft.setCursor(20, 50);
+      tft.setTextSize(3);
+      tft.setTextColor(ST7735_YELLOW);
+      tft.print(hours);
+
+      tft.setTextColor(ST7735_WHITE);
+      tft.setCursor(70, 50);
+      tft.print(minutes);
+
+      tft.setTextColor(ST7735_WHITE);
+      tft.setCursor(55, 50);
+      tft.print(":");
+
+    */
+
+    aLastState = aState; // Updates the previous state of the outputA with the current state
   }
   if (pages[4] == 1) {
     Serial.println("We are in Game 0 - 100 with Rotary Encoder Page");
