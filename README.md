@@ -2,7 +2,7 @@
 Arduino based 1.44" 65K color Thermometer for baby room - Calibrated code.
 
 <h2>Project Diagram: </h2>
-![Project Diagram] (https://raw.githubusercontent.com/stlevkov/1.44-Home-Thermometer/master/Resources/fritzing_katrin_therm_2_bb.png)
+![Project Diagram](https://raw.githubusercontent.com/stlevkov/1.44-Home-Thermometer/master/Resources/fritzing_katrin_therm_2_bb.png)
 
 <hr/>
 
