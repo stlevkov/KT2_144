@@ -2,14 +2,27 @@
 #include <TimeLib.h>   // Needed by CLock 
 #include <DS1307RTC.h> // Clock library
 
-int temp = 6; // define the digital temperature sensor interface
+int temp = 0;
 int tempCalibration = 0; // define the calibration offset between (+ and -)
 int lastTempCalibrationState = 0;
 int val ; // define numeric variables val
 
+
+
 #include <Adafruit_GFX.h>    // Core graphics library
 #include <Adafruit_ST7735.h> // Hardware-specific library
 #include <SPI.h>             // Needed for communication with the Display
+
+#include "DHT.h"     // DHT22 sensor library
+
+#define DHTPIN 6     // what digital pin we're connected to
+#define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
+// Initialize DHT sensor.
+// Note that older versions of this library took an optional third parameter to
+// tweak the timings for faster processors.  This parameter is no longer needed
+// as the current DHT reading algorithm adjusts itself to work on faster procs.
+DHT dht(DHTPIN, DHTTYPE);
+
 
 // Define 1.44" display pins
 #define TFT_CS     10
@@ -114,15 +127,28 @@ void setup() {
     Serial.println("Time Configured");
     delay(1000);
   */
+
+  // -------------------------------------- +++++   DHT22     +++++------------------------------------ //
+
+  Serial.println("DHT22 begin()!");
+
+  dht.begin();
+
+  // -------------------------------------- +++++   DHT22     +++++------------------------------------ //
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   // TODO ALWAYS GET THE NEW VALUES FOR - TEMP + CALIBRATION
-  temp = 24;
-  temp = temp + tempCalibration;
+
+
+
+
   if (pages[0] == 1) {
+
     Serial.println("We are in Home Page");
+    temp = getDhtData("temp") + tempCalibration;
+
     if (digitalRead(encoderSwitch) == LOW) {
       Serial.println("Button pressed!");
       pages[0] = 0;
@@ -250,6 +276,7 @@ void loop() {
         delay(1000); // If user holds, will be redirected back to Menu from Home, because home checks if user press the button!
         tft.fillScreen(ST7735_BLACK); // Clear the display
         counter = 0;
+        temp = getDhtData("temp");
         tempCalibration = 0;
         drawHeader();
         tft.setCursor(40, 40);
@@ -730,7 +757,8 @@ void drawTempPage() {
     drawHeader();
     tft.setCursor(40, 40);
     tft.setTextSize(7);
-    printTermometerValues(tempCalibration);
+    temp = temp + tempCalibration;
+    printTermometerValues(temp);
     tft.setTextSize(1);
     tft.setCursor(15, 100);
 
@@ -826,7 +854,13 @@ void drawHeader() {
   if (readVcc() < 3788) {                                    // 3788 ~ 3.69V on the Battery
     batteryStatusImage("", 105, 2,  5, true);            // we call the function with "" because if expired=true we set RED color instead
   } else {
-    batteryStatusImage(ST7735_WHITE, 105, 2, map(readVcc(), 3788, 4311, 1, 16), false);
+    int vcc1;
+    if (readVcc() >= 4311) {
+      vcc1 = 4311;                                       // Prevent the Image of Battery icon not to override, when greater voltage is supplied
+    } else if (readVcc() <= 3788) {
+      vcc1 = 3788;
+    }
+    batteryStatusImage(ST7735_WHITE, 105, 2, map(vcc1, 3788, 4311, 1, 16), false);
   }
   // ------------------------CHARGING ICON BATTERY PERCENTAGE---------------------------------
   if (!true) {  // TODO hook up wire to the Charging module
@@ -835,6 +869,7 @@ void drawHeader() {
     tft.setTextColor(ST7735_CYAN);
     if (readVcc() > 4320) {
       tft.setCursor(50, 3);
+      tft.setTextColor(ST7735_GREEN);
       tft.print("Charg.");
     } else {
       tft.setCursor(82, 3);
@@ -851,6 +886,7 @@ void drawHeader() {
 }
 
 void drawHomePage() {
+  // tft.fillScreen(ST7735_BLACK); // Clear the display
   drawHeader();
   // --------------------------TERMOMETER VALUES-------------------------------
   // TODO Change with the value from the sensor
@@ -1005,5 +1041,46 @@ bool getDate(const char *str)
   return true;
 }
 
+int getDhtData(String option) {
+  // Wait a few seconds between measurements.
+  delay(200);
 
+  // Reading temperature or humidity takes about 250 milliseconds!
+  // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
+  float h = dht.readHumidity();
+  // Read temperature as Celsius (the default)
+  float t = dht.readTemperature();
+  // Read temperature as Fahrenheit (isFahrenheit = true)
+  float f = dht.readTemperature(true);
+
+  // Check if any reads failed and exit early (to try again).
+  if (isnan(h) || isnan(t) || isnan(f)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
+
+  // Compute heat index in Fahrenheit (the default)
+  float hif = dht.computeHeatIndex(f, h);
+  // Compute heat index in Celsius (isFahreheit = false)
+  float hic = dht.computeHeatIndex(t, h, false);
+
+  Serial.print("Humidity: ");
+  Serial.print(h);
+  Serial.print(" %\t");
+  Serial.print("Temperature: ");
+  Serial.print(t);
+  Serial.print(" *C ");
+  Serial.print(f);
+  Serial.print(" *F\t");
+  Serial.print("Heat index: ");
+  Serial.print(hic);
+  Serial.print(" *C ");
+  Serial.print(hif);
+  Serial.println(" *F");
+
+  if (option == "temp") {
+    return t;
+  }
+
+}
 
