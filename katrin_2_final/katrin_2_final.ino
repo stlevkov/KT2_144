@@ -4,7 +4,7 @@
 
 int temp = 0;
 int tempCalibration = 0; // define the calibration offset between (+ and -)
-int lastTempCalibrationState = 0;
+int lastTempCalibrationState = 1;
 int val ; // define numeric variables val
 
 
@@ -274,10 +274,10 @@ void loop() {
         Serial.println("Go to Temp Calibration Page.");
         drawSelectedMenu(true, false, false, false, false); // Draw selected Menu 1 for GREEN border
         delay(1000); // If user holds, will be redirected back to Menu from Home, because home checks if user press the button!
-        tft.fillScreen(ST7735_BLACK); // Clear the display
         counter = 0;
         temp = getDhtData("temp");
         tempCalibration = 0;
+        tft.fillScreen(ST7735_BLACK); // Clear the display
         drawHeader();
         tft.setCursor(40, 40);
         tft.setTextSize(7);
@@ -728,12 +728,14 @@ void loop() {
 
 void drawTempPage() {
   // --------------------------TERMOMETER CALIBRATION VALUES-------------------------------
+
   Serial.print("Temp Calibration: ");
   Serial.print(tempCalibration);
   Serial.print(" , counter: ");
   Serial.print(counter);
   Serial.println("");
-  if (lastTempCalibrationState != tempCalibration) {
+
+  if (lastTempCalibrationState != tempCalibration) {                // ON ROTATION! we check for the last temo calibration, if not will start always from 0, instead of -4 for example
     tft.fillScreen(ST7735_BLACK); // Clear the display
     drawHeader();
     tft.setCursor(40, 40);
@@ -748,6 +750,7 @@ void drawTempPage() {
     tft.print("Click to save.");
     lastTempCalibrationState = tempCalibration;
   }
+
 
   if (digitalRead(encoderSwitch) == LOW) {
     Serial.println("Button pressed!");
@@ -851,29 +854,31 @@ void drawMenuList(bool menu1IsSelected, bool menu2IsSelected, bool menu3IsSelect
 void drawHeader() {
   // -----------------------BATTERY STATUS ICON----------------------------------
   tft.setTextSize(1);
-  if (readVcc() < 3788) {                                    // 3788 ~ 3.69V on the Battery
+  int vcc = readVcc();
+  int vccCheck;                                      // Used for verify the max and the min to not OVERRIDE THE BATTERY IMAGE to inifinity left, or right
+  if (vcc >= 4311) {
+    vccCheck = 4311;                                       // Prevent the Image of Battery icon not to override, when greater voltage is supplied
+  } else if (readVcc() <= 3788) {
+    vccCheck = 3788;
+  }
+  if (vcc < 3788) {                                    // 3788 ~ 3.69V on the Battery
     batteryStatusImage("", 105, 2,  5, true);            // we call the function with "" because if expired=true we set RED color instead
   } else {
-    int vcc1;
-    if (readVcc() >= 4311) {
-      vcc1 = 4311;                                       // Prevent the Image of Battery icon not to override, when greater voltage is supplied
-    } else if (readVcc() <= 3788) {
-      vcc1 = 3788;
-    }
-    batteryStatusImage(ST7735_WHITE, 105, 2, map(vcc1, 3788, 4311, 1, 16), false);
+    batteryStatusImage(ST7735_WHITE, 105, 2, map(vccCheck, 3788, 4311, 1, 16), false);
   }
+  
   // ------------------------CHARGING ICON BATTERY PERCENTAGE---------------------------------
   if (!true) {  // TODO hook up wire to the Charging module
 
   } else {
     tft.setTextColor(ST7735_CYAN);
-    if (readVcc() > 4320) {
+    if (vcc > 4320) {
       tft.setCursor(50, 3);
       tft.setTextColor(ST7735_GREEN);
-      tft.print("Charg.");
+      tft.print("Charged");
     } else {
       tft.setCursor(82, 3);
-      tft.print(map(readVcc(), 3788, 4311, 0, 100));
+      tft.print(map(vcc, 3788, 4311, 0, 100));
       tft.print("%");
     }
   }
