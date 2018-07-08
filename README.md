@@ -8,7 +8,7 @@ Global variables use 1448 bytes (70%) of dynamic memory, leaving 600 bytes for l
 
 <h2>Project Diagram: </h2>
 
-![Project image](https://github.com/stlevkov/1.44-Home-Thermometer/blob/master/Resources/fritzing_katrin_therm_2_bb.png)
+![Project image](https://github.com/stlevkov/1.44-Home-Thermometer/blob/master/Resources/fritzing_katrin_therm.png)
 
 
 <h2>Picture standby:</h2>
