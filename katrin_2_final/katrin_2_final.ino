@@ -7,8 +7,6 @@ int tempCalibration = 0; // define the calibration offset between (+ and -)
 int lastTempCalibrationState = 1;
 int val ; // define numeric variables val
 
-
-
 #include <Adafruit_GFX.h>    // Core graphics library
 #include <Adafruit_ST7735.h> // Hardware-specific library
 #include <SPI.h>             // Needed for communication with the Display
@@ -60,7 +58,6 @@ int aLastState;
 // Used by Clock Adjustion Page for selecting the current position and colored it by defined color in the methods bellow
 int selectedClockIndex = 0;   // Posibble values for Clock Adjust Page: 0 - hours, 1 - minutes, 2 - day, 3 - month, 4 - year
 
-
 //Define Days for Clock
 const char *monthName[12] = {
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -111,22 +108,11 @@ void setup() {
   delay(3000);
   tft.fillScreen(ST7735_BLACK);
 
-
   pages[0] = 1;   // Home Page
   pages[1] = 0;  // Menu Page
   pages[2] = 0;  // Home Page + Temp ajust calibration
   pages[3] = 0;   // Home Page + Clock ajust
   pages[4] = 0;  // Home Page + Game 0 - 100 with Rotary Encoder
-
-  temp = 24;
-
-  /*
-    Serial.println("Configuring time: 19:29:30");
-    configureTime(20,13,00);
-    delay(2000);
-    Serial.println("Time Configured");
-    delay(1000);
-  */
 
   // -------------------------------------- +++++   DHT22     +++++------------------------------------ //
 
@@ -140,9 +126,6 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   // TODO ALWAYS GET THE NEW VALUES FOR - TEMP + CALIBRATION
-
-
-
 
   if (pages[0] == 1) {
 
@@ -866,7 +849,7 @@ void drawHeader() {
   } else {
     batteryStatusImage(ST7735_WHITE, 105, 2, map(vccCheck, 3788, 4311, 1, 16), false);
   }
-  
+
   // ------------------------CHARGING ICON BATTERY PERCENTAGE---------------------------------
   if (!true) {  // TODO hook up wire to the Charging module
 
@@ -1002,7 +985,7 @@ String getClock() {
       Serial.println("example to initialize the time and begin running.");
       Serial.println();
     } else {
-      Serial.println("DS1307 read error!  Please check the circuitry.");
+      Serial.println("DS1307 CLOCK read error!  Please check the circuitry.");
       Serial.println();
     }
     delay(9000);
@@ -1058,12 +1041,14 @@ int getDhtData(String option) {
   // Read temperature as Fahrenheit (isFahrenheit = true)
   float f = dht.readTemperature(true);
 
+  
   // Check if any reads failed and exit early (to try again).
   if (isnan(h) || isnan(t) || isnan(f)) {
     Serial.println("Failed to read from DHT sensor!");
-    return;
+   return;
   }
-
+  
+  
   // Compute heat index in Fahrenheit (the default)
   float hif = dht.computeHeatIndex(f, h);
   // Compute heat index in Celsius (isFahreheit = false)
