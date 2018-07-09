@@ -260,18 +260,8 @@ void loop() {
         counter = 0;
         temp = getDhtData("temp");
         tempCalibration = 0;
-        tft.fillScreen(ST7735_BLACK); // Clear the display
-        drawHeader();
-        tft.setCursor(40, 40);
-        tft.setTextSize(7);
-        printTermometerValues(tempCalibration);
-        tft.setCursor(15, 20);
-        tft.setTextSize(1);
-        tft.setTextColor(ST7735_GREEN);
-        tft.print("Temp Calibration");
-        tft.setCursor(20, 100);
-        tft.setTextColor(ST7735_WHITE);
-        tft.print("Click to save.");
+        lastTempCalibrationState = 2;
+        drawTempPage();
       }
 
     }  else if (menus[1] == 1) {
@@ -399,13 +389,13 @@ void loop() {
       //  The counter is from 0, 2, 4, 6, 8
       if (counter == 0) {  // offset is equals to 0
         tempCalibration = 0;
-      } else if (counter == 2) {     //  WE MARK MENU 2 CLOCK
+      } else if (counter == 2) {    
         tempCalibration = 1;
-      } else if (counter == 4) {    // WE MARK MENU 3 GAME 1
+      } else if (counter == 4) {    
         tempCalibration = 2;
-      } else if (counter == 6) {     // WE MARK MENU 4 GAME 2
+      } else if (counter == 6) {     
         tempCalibration = 3;
-      } else if (counter == 8) {      // WE MARK MENU 5 BACK
+      } else if (counter == 8) {      
         tempCalibration = 4;
       } else if (counter > 8) {
         counter = 8;
@@ -836,35 +826,58 @@ void drawMenuList(bool menu1IsSelected, bool menu2IsSelected, bool menu3IsSelect
 
 void drawHeader() {
   // -----------------------BATTERY STATUS ICON----------------------------------
+
+  int vcc = readVcc() - 130;
   tft.setTextSize(1);
-  int vcc = readVcc();
-  int vccCheck;                                      // Used for verify the max and the min to not OVERRIDE THE BATTERY IMAGE to inifinity left, or right
-  if (vcc >= 4311) {
-    vccCheck = 4311;                                       // Prevent the Image of Battery icon not to override, when greater voltage is supplied
-  } else if (readVcc() <= 3788) {
-    vccCheck = 3788;
-  }
-  if (vcc < 3788) {                                    // 3788 ~ 3.69V on the Battery
+  // If we put Regulated PSU - 5V 1A, the current used from the device is 0.115/0.116A
+  // Basicaly the readVcc function did not return equivalent values and has no constant change regarding the provided voltage.
+  // readVcc uses a integreated vin of arduino to check the voltage supplied.
+  // However we correct that voltage with - 0.130V (130 milliVolts) to get the right results
+
+  // min - 2.8V  (but for serial monitor needed at least 3.3)
+  // max - 5V
+
+  // Checked several settings:
+  // Supplied     Actual + Calibration
+  // 2800 V          2748 V
+  // 3000 V          2961 V
+  // 3300 V          3269 V
+  // 3700 V          3684 V
+  // 4000 V          4007 V
+  // 4200 V          4214 V
+  // 4500 V          4539 V
+  // 4700 V          4741 V
+  // 5000 V          5079 V
+
+  if (vcc < 2961) {
     batteryStatusImage("", 105, 2,  5, true);            // we call the function with "" because if expired=true we set RED color instead
-  } else {
-    batteryStatusImage(ST7735_WHITE, 105, 2, map(vccCheck, 3788, 4311, 1, 16), false);
-  }
-
-  // ------------------------CHARGING ICON BATTERY PERCENTAGE---------------------------------
-  if (!true) {  // TODO hook up wire to the Charging module
-
-  } else {
-    tft.setTextColor(ST7735_CYAN);
-    if (vcc > 4320) {
-      tft.setCursor(50, 3);
+  } else if (vcc >= 2961) {
+    if (vcc <= 4214) {
+      tft.setCursor(40, 3);
       tft.setTextColor(ST7735_GREEN);
-      tft.print("Charged");
-    } else {
+      tft.print(vcc);
+      tft.print("mV");
+  // ------------------------CHARGING ICON BATTERY PERCENTAGE---------------------------------
+      tft.setTextColor(ST7735_WHITE);
       tft.setCursor(82, 3);
-      tft.print(map(vcc, 3788, 4311, 0, 100));
+      tft.print(map(vcc, 2961, 4214, 0, 100));
       tft.print("%");
+
+      batteryStatusImage(ST7735_WHITE, 105, 2, map(vcc, 2961, 4214, 1, 16), false);
+    } else if (vcc > 4214) {
+      tft.setCursor(40, 3);
+      tft.setTextColor(ST7735_YELLOW);
+      tft.print(vcc);
+      tft.print("mV");
+
+      tft.setTextColor(ST7735_CYAN);
+      tft.setCursor(95, 3);
+      tft.print("USB");
+
     }
   }
+
+
   // -----------------------DATE AND TIME ----------------------------------
   tft.setCursor(2, 3);
   tft.setTextSize(1);
@@ -1041,14 +1054,14 @@ int getDhtData(String option) {
   // Read temperature as Fahrenheit (isFahrenheit = true)
   float f = dht.readTemperature(true);
 
-  
+
   // Check if any reads failed and exit early (to try again).
   if (isnan(h) || isnan(t) || isnan(f)) {
     Serial.println("Failed to read from DHT sensor!");
-   return;
+    return;
   }
-  
-  
+
+
   // Compute heat index in Fahrenheit (the default)
   float hif = dht.computeHeatIndex(f, h);
   // Compute heat index in Celsius (isFahreheit = false)
