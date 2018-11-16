@@ -3,9 +3,9 @@
 #include <DS1307RTC.h> // Clock library
 
 int temp = 0;
+int lastTempState = 0;
 int tempCalibration = 0; // define the calibration offset between (+ and -)
 int lastTempCalibrationState = 1;
-int val ; // define numeric variables val
 
 #include <Adafruit_GFX.h>    // Core graphics library
 #include <Adafruit_ST7735.h> // Hardware-specific library
@@ -21,12 +21,23 @@ int val ; // define numeric variables val
 // as the current DHT reading algorithm adjusts itself to work on faster procs.
 DHT dht(DHTPIN, DHTTYPE);
 
-
+// --------------- ST7735 chip --------------- //
 // Define 1.44" display pins
 #define TFT_CS     10
 #define TFT_RST    8  // you can also connect this to the Arduino reset
 // in which case, set this #define pin to -1!
 #define TFT_DC     9
+
+// Color definitions
+#define BLACK 0x0000
+#define BLUE 0x001F
+#define RED 0xF800
+#define GREEN 0x07E0
+#define CYAN 0x07FF
+#define MAGENTA 0xF81F
+#define YELLOW 0xFFE0
+#define WHITE 0xFFFF
+
 
 // Option 1 (recommended): must use the hardware SPI pins
 // (for UNO thats sclk = 13 and sid = 11) and pin 10 must be
@@ -51,9 +62,12 @@ int counter = 0;
 int hoursCounter = 0;   // Needed by Clock Adjustion Page for getting EVEN 0,2,4 untill 24 for hours
 int minutesCounter = 0; // Needed by Clock Adjustion Page for getting EVEN 0,2,4 untill 60 for minutes
 
-int aState;
-int bState;
-int aLastState;
+int aState;             // Rotary Encoder start position
+int bState;             // Rotary Encoder end position
+int aLastState;         // Saving last state of the encoder
+
+int vcc = 0;          // Reading the voltage internally in milliVolts
+int vccLastState = 0;    // Saving the last state of the reading for clearing the display when the voltage change
 
 // Used by Clock Adjustion Page for selecting the current position and colored it by defined color in the methods bellow
 int selectedClockIndex = 0;   // Posibble values for Clock Adjust Page: 0 - hours, 1 - minutes, 2 - day, 3 - month, 4 - year
@@ -64,6 +78,9 @@ const char *monthName[12] = {
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 };
 tmElements_t tm;   // The importent thing here is this Class for RTC lib
+
+int hourLastState = 0;
+int minutesLastState = 0;
 
 int hours;
 int minutes;
@@ -95,25 +112,23 @@ void setup() {
   // This info is for Boot up, showing the last firmware compile date & time - there is 3 sec delay in here
   printFirmwareInfo();
 
-  pages[0] = 1;   // Home Page
+  pages[0] = 1;  // Home Page
   pages[1] = 0;  // Menu Page
   pages[2] = 0;  // Home Page + Temp ajust calibration
-  pages[3] = 0;   // Home Page + Clock ajust
-  pages[4] = 0;  // Home Page + Game 0 - 100 with Rotary Encoder
-
+  pages[3] = 0;  // Home Page + Clock ajust
+  pages[4] = 0;  // Home Page + Humm conf
+  pages[5] = 0;  // Home Page + About
   // -------------------------------------- +++++   DHT22     +++++------------------------------------ //
-
- // Serial.println("DHT22 begin()!");
-
+  // Serial.println("DHT22 begin()!");
   dht.begin();
-
   // -------------------------------------- +++++   DHT22     +++++------------------------------------ //
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
   // TODO ALWAYS GET THE NEW VALUES FOR - TEMP + CALIBRATION
 
+
+  // -------------------------------------- HOME PAGE ------------------------------------ //
   if (pages[0] == 1) {
 
     Serial.println("We are in Home Page");
@@ -126,6 +141,7 @@ void loop() {
       pages[2] = 0;
       pages[3] = 0;
       pages[4] = 0;
+      pages[5] = 0;
       tft.fillScreen(ST7735_BLACK); // Clear the display
       drawHeader();
       drawMenuListEmpty();
@@ -142,10 +158,14 @@ void loop() {
       drawHomePage();
     }
   }
-  if (pages[1] == 1) { // CHOOSEN IS MENU PAGE WE TRY TO GET THE ROTARY ENCODER INFORMATION
+
+  // -------------------------------------- MENU PAGE ------------------------------------ //
+  if (pages[1] == 1) {
+    // CHOOSEN IS MENU PAGE WE TRY TO GET THE ROTARY ENCODER INFORMATION
     Serial.println("Choosen Menu: " + (String) menus[0] + " " + (String) menus[1] + " " + (String) menus[2] + " " + (String) menus[3] + " " + (String) menus[4]);
     aState = digitalRead(outputA); // Reads the "current" state of the outputA
     bState = digitalRead(outputB);
+
     // If the previous and the current state of the outputA are different, that means a Pulse has occured
     if (aState != aLastState) {
       // If the outputB state is different to the outputA state, that means the encoder is rotating clockwise
@@ -175,7 +195,7 @@ void loop() {
         drawHeader();
         drawMenuListEmpty();
         drawMenuList(false, true, false, false, false);
-      } else if (counter == 4) {    // WE MARK MENU 3 GAME 1
+      } else if (counter == 4) {    // WE MARK MENU 3 Humm
         menus[0] = 0;
         menus[1] = 0;
         menus[2] = 1;
@@ -185,7 +205,7 @@ void loop() {
         drawHeader();
         drawMenuListEmpty();
         drawMenuList(false, false, true, false, false);
-      } else if (counter == 6) {     // WE MARK MENU 4 GAME 2
+      } else if (counter == 6) {     // WE MARK MENU 4 About
         menus[0] = 0;
         menus[1] = 0;
         menus[2] = 0;
@@ -232,6 +252,7 @@ void loop() {
         pages[2] = 1;  // We choose TEMP Calibration Page
         pages[3] = 0;
         pages[4] = 0;
+        pages[5] = 0;
         // ------ //
         counter = 0;
         menus[0] = 1;
@@ -259,6 +280,7 @@ void loop() {
         pages[2] = 0;
         pages[3] = 1;   // We choose CLOCK Calibration Page
         pages[4] = 0;
+        pages[5] = 0;
         // ------ //
         counter = 0;
         menus[0] = 1;
@@ -311,13 +333,13 @@ void loop() {
       }
 
     } else if (menus[2] == 1) {
-      // Serial.println("We are marked MENU 3 - GO TO Game 1 PAGE");
+      // Serial.println("We are marked MENU 3 - GO TO Humm PAGE");
       if (digitalRead(encoderSwitch) == LOW) {
         pages[0] = 0;
         pages[1] = 0;
         pages[2] = 0;
         pages[3] = 0;
-        pages[4] = 1;   // We choose Game 1 Page
+        pages[4] = 1;   // We choose Humm Page
         // ------ //
         counter = 0;
         menus[0] = 1;
@@ -327,13 +349,36 @@ void loop() {
         menus[4] = 0;
       }
       if (pages[4] == 1) {
-        Serial.println("Go to Game 1 Page.");
+        Serial.println("Go to Humm Page.");
         drawSelectedMenu(false, false, true, false, false); // Draw selected Menu 2 for GREEN border
         delay(1000); // If user holds, will be redirected back to Menu from Home, because home checks if user press the button!
         tft.fillScreen(ST7735_BLACK); // Clear the display
       }
 
     } else if (menus[3] == 1) {
+      // Serial.println("We are marked MENU 4 - GO TO About PAGE;
+      if (digitalRead(encoderSwitch) == LOW) {
+        pages[0] = 0;
+        pages[1] = 0;
+        pages[2] = 0;
+        pages[3] = 0;
+        pages[4] = 0;
+        pages[5] = 0;
+        pages[5] = 1;  // We choose About Page
+        // ------ //
+        counter = 0;
+        menus[0] = 1;
+        menus[1] = 0;
+        menus[2] = 0;
+        menus[3] = 0;
+        menus[4] = 0;
+      }
+      if (pages[5] == 1) {
+        Serial.println("Go to About Page.");
+        drawSelectedMenu(false, false, false, true, false); // Draw selected Menu 2 for GREEN border
+        delay(1000); // If user holds, will be redirected back to Menu from Home, because home checks if user press the button!
+        tft.fillScreen(ST7735_BLACK); // Clear the display
+      }
 
     } else if (menus[4] == 1) {
       // Serial.println("We are marked MENU 5 - RETURN TO HOME PAGE");
@@ -343,6 +388,7 @@ void loop() {
         pages[2] = 0;
         pages[3] = 0;
         pages[4] = 0;
+        pages[5] = 0;
         // ------ //
         counter = 0;
         menus[0] = 1;
@@ -360,6 +406,8 @@ void loop() {
       }
     }
   }
+
+  // -------------------------------------- TEMP PAGE ------------------------------------ //
   if (pages[2] == 1) {
     // Serial.println("We are in Temp Page");
     // -----------------------ROTARY ENCODER LOGIC----------------------------------
@@ -403,6 +451,8 @@ void loop() {
     aLastState = aState; // Updates the previous state of the outputA with the current state
     drawTempPage();
   }
+
+  // -------------------------------------- CLOCK PAGE ------------------------------------ //
   if (pages[3] == 1) {
     Serial.println("We are in Clock ajust Page");
     Serial.print("selectedClockIndex: ");
@@ -496,12 +546,8 @@ void loop() {
 
         }
       }
-
       Serial.println(counter);
       Serial.println(hoursCounter);
-
-
-
       // Click to save the current position
       if (digitalRead(encoderSwitch) == LOW) {
         counter = 0;
@@ -618,17 +664,11 @@ void loop() {
             tft.setTextColor(ST7735_WHITE);
             tft.setCursor(55, 50);
             tft.print(":");
-
           }
-
         }
       }
-
       Serial.println(counter);
       Serial.println(minutesCounter);
-
-
-
       // Click to save the current position
       if (digitalRead(encoderSwitch) == LOW) {
         //    selectedClockIndex ++;                                      // going to adjust days
@@ -653,7 +693,7 @@ void loop() {
         tft.setCursor(55, 50);
         tft.print(":");
 
-        // TODO - Display text - New Values Saved
+        // Display text - New Values Saved
         tft.setTextSize(1);
         tft.setCursor(15, 100);
 
@@ -665,22 +705,69 @@ void loop() {
         pages[2] = 0;
         pages[3] = 0;
         pages[4] = 0;
+        pages[5] = 0;
         tft.fillScreen(ST7735_BLACK); // Clear the display
         drawHomePage();
-
-
       }
-
     }
-
-
-
     aLastState = aState; // Updates the previous state of the outputA with the current state
   }
-  if (pages[4] == 1) {
-    Serial.println("We are in Game 0 - 100 with Rotary Encoder Page");
-    // Serial.println("Drawing Game 0 - 100 with Rotary Encoder page");
 
+  // -------------------------------------- HUMMIDITY PAGE ------------------------------------ //
+  if (pages[4] == 1) {
+    Serial.println("We are in humm page");
+    tft.setTextSize(1);
+    tft.setCursor(15, 50);
+    tft.setTextColor(ST7735_BLUE);
+    tft.print("Conf Hummidity");
+    drawHeader();
+    if (digitalRead(encoderSwitch) == LOW) {  // We go back
+      tft.fillScreen(ST7735_BLACK); // Clear the display
+      drawHeader();
+      tft.setTextSize(1);
+      tft.setCursor(15, 50);
+      tft.setTextColor(ST7735_GREEN);
+      tft.print("Going Back.");
+      delay(3000); // Wait before show Menu, because if user little holds the button activate the first menu automaticly
+      pages[0] = 1;   // We return to Home page
+      pages[1] = 0;
+      pages[2] = 0;
+      pages[3] = 0;
+      pages[4] = 0;
+      pages[5] = 0;
+      tft.fillScreen(ST7735_BLACK); // Clear the display
+      drawHomePage();
+    }
+    aLastState = aState; // Updates the previous state of the outputA with the current state
+  }
+
+
+  // -------------------------------------- About PAGE ------------------------------------ //
+  if (pages[5] == 1) {
+    Serial.println("We are in About page");
+    tft.setTextSize(1);
+    tft.setCursor(15, 50);
+    tft.setTextColor(ST7735_BLUE);
+    tft.print("Firmware Version");
+    drawHeader();
+    if (digitalRead(encoderSwitch) == LOW) {  // We go back
+      tft.fillScreen(ST7735_BLACK); // Clear the display
+      drawHeader();
+      tft.setTextSize(1);
+      tft.setCursor(15, 50);
+      tft.setTextColor(ST7735_GREEN);
+      tft.print("Going Back.");
+      delay(3000); // Wait before show Menu, because if user little holds the button activate the first menu automaticly
+      pages[0] = 1;   // We return to Home page
+      pages[1] = 0;
+      pages[2] = 0;
+      pages[3] = 0;
+      pages[4] = 0;
+      pages[5] = 0;
+      tft.fillScreen(ST7735_BLACK); // Clear the display
+      drawHomePage();
+    }
+    aLastState = aState; // Updates the previous state of the outputA with the current state
   }
 
 
@@ -733,6 +820,7 @@ void drawTempPage() {
     pages[2] = 0;
     pages[3] = 0;
     pages[4] = 0;
+    pages[5] = 0;
     tft.fillScreen(ST7735_BLACK); // Clear the display
     drawHomePage();
   }
@@ -746,9 +834,9 @@ void drawMenuListEmpty() {
   tft.setCursor(45, 45);
   tft.print("Clock");
   tft.setCursor(45, 65);
-  tft.print("Game 1");
+  tft.print("Humm");
   tft.setCursor(45, 85);
-  tft.print("Game 2");
+  tft.print("About");
   tft.setCursor(45, 105);
   tft.print("Back");
 }
@@ -814,7 +902,13 @@ void drawMenuList(bool menu1IsSelected, bool menu2IsSelected, bool menu3IsSelect
 void drawHeader() {
   // -----------------------BATTERY STATUS ICON----------------------------------
 
-  int vcc = readVcc() - 130;
+  vcc = readVcc() - 130;  // Calibrate the reading
+
+  if (vcc != vccLastState) {
+    tft.fillRect(40, 0, 88, 13, BLACK);               // clear header, voltage is changed
+    vccLastState = vcc;
+  }
+
   tft.setTextSize(1);
   // If we put Regulated PSU - 5V 1A, the current used from the device is 0.115/0.116A
   // Basicaly the readVcc function did not return equivalent values and has no constant change regarding the provided voltage.
@@ -874,7 +968,11 @@ void drawHeader() {
 }
 
 void drawHomePage() {
-  // tft.fillScreen(ST7735_BLACK); // Clear the display
+  // check if temp has different value
+  if (temp != lastTempState) {
+    tft.fillRect(40, 40, 77, 49, BLACK);      // Clear the Temp Value Rectangle Area
+    lastTempState = temp;
+  }
   drawHeader();
   // --------------------------TERMOMETER VALUES-------------------------------
   // TODO Change with the value from the sensor
@@ -883,7 +981,7 @@ void drawHomePage() {
   tft.setTextSize(7);
   printTermometerValues(temp);
   // -----------------------TERMOMETER STATUS ICON----------------------------------
-  termometerStatusImage(ST7735_WHITE, ST7735_RED, 10, 10, map(temp, 1, 60, 1 , 29));
+  termometerStatusImage(WHITE, RED, 10, 10, map(temp, 1, 60, 1 , 29));
 }
 
 void printTermometerValues(int temp) {
@@ -973,27 +1071,45 @@ void batteryStatusImage(uint16_t color1, uint16_t x, uint16_t y, uint16_t fillUp
 String getClock() {
   String msg = "";
   tmElements_t tm;
+  int hours = 0;
+  int minutes = 0;
+
+
+
 
   if (RTC.read(tm)) {
-    msg += tm.Hour;
+    hours = tm.Hour;
+    minutes = tm.Minute;
+
+    if (hours != hourLastState) {
+      Serial.println("refreshing Hour");
+      tft.fillRect(0, 0, 14, 13, BLACK);
+      hourLastState = hours;
+    } else if (minutes != minutesLastState) {
+      Serial.println("refreshing Minutes");
+      tft.fillRect(20, 0, 14, 13, BLACK);
+      minutesLastState = minutes;
+    }
+
+    msg += hours;
     msg += ":";
-    msg += tm.Minute;
+    msg += minutes;
   } else {
     if (RTC.chipPresent()) {
       // TODO - display error on the screen
       /*
-      Serial.println("The DS1307 is stopped.  Please run the SetTime");
-      Serial.println("example to initialize the time and begin running.");
-      Serial.println();
+        Serial.println("The DS1307 is stopped.  Please run the SetTime");
+        Serial.println("example to initialize the time and begin running.");
+        Serial.println();
       */
     } else {
       // TODO - display error on the screen
       /*
-      Serial.println("DS1307 CLOCK read error!  Please check the circuitry.");
-      Serial.println();
+        Serial.println("DS1307 CLOCK read error!  Please check the circuitry.");
+        Serial.println();
       */
     }
-   // delay(9000);
+    // delay(9000);
   }
   return msg;
 }
@@ -1007,8 +1123,8 @@ void configureTime(int Hour, int Min, int Sec) {   // Configure RTCDS1307 Clock 
 
 // TODO - getDate is not used, uncomment when will be displayed on the screen
 /*
-bool getDate(const char *str)
-{
+  bool getDate(const char *str)
+  {
   char Month[12];
   int Day, Year;
   uint8_t monthIndex;
@@ -1020,7 +1136,7 @@ bool getDate(const char *str)
   if (monthIndex >= 12) return false;
 
   return true;
-}
+  }
 */
 
 int getDhtData(String option) {
@@ -1080,6 +1196,3 @@ void printFirmwareInfo() {
   delay(3000);
   tft.fillScreen(ST7735_BLACK);
 }
-
-
-
