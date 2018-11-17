@@ -1,20 +1,23 @@
-#include <Wire.h>  // Needed for I2C communication
-#include <TimeLib.h>   // Needed by CLock 
-#include <DS1307RTC.h> // Clock library
+#include <Wire.h>                   // Needed for I2C communication
+#include <TimeLib.h>                // Needed by CLock 
+#include <DS1307RTC.h>              // Clock library
 
-int temp = 0;
-int lastTempState = 0;
-int tempCalibration = 0; // define the calibration offset between (+ and -)
-int lastTempCalibrationState = 1;
+int temp = 0;                       // Holds the Temp variable for reading from DHT Sensor
+int hum = 0;                       // Holds the hum var
+int lastTempState = 0;              // define the last state of the temp measurement
+int lasthumState = 0;              // define the last state of the hum measurement
+int tempCalibration = 0;            // define the calibration offset between (+ and -)
+int lastTempCalibrationState = 1;   // define calibration state for the calibration of the Temp value
 
-#include <Adafruit_GFX.h>    // Core graphics library
-#include <Adafruit_ST7735.h> // Hardware-specific library
-#include <SPI.h>             // Needed for communication with the Display
+#include <Adafruit_GFX.h>           // Core graphics library
+#include <Adafruit_ST7735.h>        // Hardware-specific library
+#include <SPI.h>                    // Needed for communication with the Display
 
-#include "DHT.h"     // DHT22 sensor library
+#include "DHT.h"                    // DHT22 sensor library
 
-#define DHTPIN 6     // what digital pin we're connected to
-#define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
+#define DHTPIN 6                    // what digital pin we're connected to
+#define DHTTYPE DHT22               // DHT 22  (AM2302), AM2321
+
 // Initialize DHT sensor.
 // Note that older versions of this library took an optional third parameter to
 // tweak the timings for faster processors.  This parameter is no longer needed
@@ -24,11 +27,10 @@ DHT dht(DHTPIN, DHTTYPE);
 // --------------- ST7735 chip --------------- //
 // Define 1.44" display pins
 #define TFT_CS     10
-#define TFT_RST    8  // you can also connect this to the Arduino reset
-// in which case, set this #define pin to -1!
+#define TFT_RST    8               // you can also connect this to the Arduino reset
 #define TFT_DC     9
 
-// Color definitions
+// Color definitions for using tft library HEXs instead of ST7735_BLUE for example
 #define BLACK 0x0000
 #define BLUE 0x001F
 #define RED 0xF800
@@ -38,6 +40,12 @@ DHT dht(DHTPIN, DHTTYPE);
 #define YELLOW 0xFFE0
 #define WHITE 0xFFFF
 
+
+#define FIRMWARE_VERSION "1.2"
+#define COUNTRY "Bulgaria"
+#define CODE_LOCATION "GitHub"
+#define CODE_ORIGIN "/stlevkov"
+#define CODE_REPO "/KT2_144"
 
 // Option 1 (recommended): must use the hardware SPI pins
 // (for UNO thats sclk = 13 and sid = 11) and pin 10 must be
@@ -50,7 +58,7 @@ Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS,  TFT_DC, TFT_RST);
 #define TFT_MOSI 11   // set these to be whatever pins you like!
 //Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 
-float p = 3.1415926;
+float p = 3.1415926;    // define pi first 7 numbers
 
 // Define D3, D4 for Rotary Encoder Button
 #define outputA 3
@@ -59,25 +67,25 @@ float p = 3.1415926;
 
 int switchCounter = 0;
 int counter = 0;
-int hoursCounter = 0;   // Needed by Clock Adjustion Page for getting EVEN 0,2,4 untill 24 for hours
-int minutesCounter = 0; // Needed by Clock Adjustion Page for getting EVEN 0,2,4 untill 60 for minutes
+int hoursCounter = 0;                   // Needed by Clock Adjustion Page for getting EVEN 0,2,4 untill 24 for hours
+int minutesCounter = 0;                 // Needed by Clock Adjustion Page for getting EVEN 0,2,4 untill 60 for minutes
 
-int aState;             // Rotary Encoder start position
-int bState;             // Rotary Encoder end position
-int aLastState;         // Saving last state of the encoder
+int aState;                             // Rotary Encoder start position
+int bState;                             // Rotary Encoder end position
+int aLastState;                         // Saving last state of the encoder
 
-int vcc = 0;          // Reading the voltage internally in milliVolts
-int vccLastState = 0;    // Saving the last state of the reading for clearing the display when the voltage change
+int vcc = 0;                            // Reading the voltage internally in milliVolts
+int vccLastState = 0;                   // Saving the last state of the reading for clearing the display when the voltage change
 
 // Used by Clock Adjustion Page for selecting the current position and colored it by defined color in the methods bellow
-int selectedClockIndex = 0;   // Posibble values for Clock Adjust Page: 0 - hours, 1 - minutes, 2 - day, 3 - month, 4 - year
+int selectedClockIndex = 0;             // Posibble values for Clock Adjust Page: 0 - hours, 1 - minutes, 2 - day, 3 - month, 4 - year
 
 //Define Days for Clock
 const char *monthName[12] = {
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 };
-tmElements_t tm;   // The importent thing here is this Class for RTC lib
+tmElements_t tm;                        // The importent thing here is this Class for RTC lib
 
 int hourLastState = 0;
 int minutesLastState = 0;
@@ -87,23 +95,23 @@ int minutes;
 int seconds;
 
 // Menu variables
-int pages[] = {0, 0, 0, 0, 0};  // Array menus holding Pages
-int menus[] = {1, 0, 0, 0, 0};  // Array menus holding positions in the Menu List
+int pages[] = {0, 0, 0, 0, 0};          // Array menus holding Pages
+int menus[] = {1, 0, 0, 0, 0};          // Array menus holding positions in the Menu List
 
 
 void setup() {
   // Boot up:
   Serial.begin(115200);
-  pinMode (outputA, INPUT); // Define outputA to be INPUT from Rotary Encoder
-  pinMode (outputB, INPUT); // Define outputB to be INPUT from Rotary Encoder
-  pinMode (encoderSwitch, OUTPUT); // Define Rotary Encoder Click switch to be output
-  digitalWrite(encoderSwitch, HIGH);  //
+  pinMode (outputA, INPUT);             // Define outputA to be INPUT from Rotary Encoder
+  pinMode (outputB, INPUT);             // Define outputB to be INPUT from Rotary Encoder
+  pinMode (encoderSwitch, OUTPUT);      // Define Rotary Encoder Click switch to be output
+  digitalWrite(encoderSwitch, HIGH);
 
   // Reads the initial state of the outputA
   aLastState = digitalRead(outputA);
 
   // Use this initializer (uncomment) if you're using a 1.44" TFT
-  tft.initR(INITR_144GREENTAB);   // initialize a ST7735S chip, black tab
+  tft.initR(INITR_144GREENTAB);         // initialize a ST7735S chip, black tab
 
   // Set first background to black
   tft.fillScreen(ST7735_BLACK);
@@ -116,7 +124,7 @@ void setup() {
   pages[1] = 0;  // Menu Page
   pages[2] = 0;  // Home Page + Temp ajust calibration
   pages[3] = 0;  // Home Page + Clock ajust
-  pages[4] = 0;  // Home Page + Humm conf
+  pages[4] = 0;  // Home Page + hum conf
   pages[5] = 0;  // Home Page + About
   // -------------------------------------- +++++   DHT22     +++++------------------------------------ //
   // Serial.println("DHT22 begin()!");
@@ -133,6 +141,7 @@ void loop() {
 
     Serial.println("We are in Home Page");
     temp = getDhtData("temp") + tempCalibration;
+    hum = getDhtData("hum");
 
     if (digitalRead(encoderSwitch) == LOW) {
       Serial.println("Button pressed!");
@@ -145,13 +154,13 @@ void loop() {
       tft.fillScreen(ST7735_BLACK); // Clear the display
       drawHeader();
       drawMenuListEmpty();
-      counter = 0; // Clear the counter for the Menu, so we can start the menu with 1st
+      counter = 0;                           // Clear the counter for the Menu, so we can start the menu with 1st
       menus[0] = 1;
       menus[1] = 0;
       menus[2] = 0;
       menus[3] = 0;
       menus[4] = 0;
-      drawMenuList(true, false, false, false, false);
+      drawMenuListButtons(true, false, false, false, false);
       delay(1000); // Wait before show Menu, because if user little holds the button activate the first menu automaticly
     } else {
       // We draw Home page here:
@@ -184,7 +193,7 @@ void loop() {
         tft.fillScreen(ST7735_BLACK); // Clear the display
         drawHeader();
         drawMenuListEmpty();
-        drawMenuList(true, false, false, false, false);
+        drawMenuListButtons(true, false, false, false, false);
       } else if (counter == 2) {     //  WE MARK MENU 2 CLOCK
         menus[0] = 0;
         menus[1] = 1;
@@ -194,8 +203,8 @@ void loop() {
         tft.fillScreen(ST7735_BLACK); // Clear the display
         drawHeader();
         drawMenuListEmpty();
-        drawMenuList(false, true, false, false, false);
-      } else if (counter == 4) {    // WE MARK MENU 3 Humm
+        drawMenuListButtons(false, true, false, false, false);
+      } else if (counter == 4) {    // WE MARK MENU 3 hum
         menus[0] = 0;
         menus[1] = 0;
         menus[2] = 1;
@@ -204,7 +213,7 @@ void loop() {
         tft.fillScreen(ST7735_BLACK); // Clear the display
         drawHeader();
         drawMenuListEmpty();
-        drawMenuList(false, false, true, false, false);
+        drawMenuListButtons(false, false, true, false, false);
       } else if (counter == 6) {     // WE MARK MENU 4 About
         menus[0] = 0;
         menus[1] = 0;
@@ -214,7 +223,7 @@ void loop() {
         tft.fillScreen(ST7735_BLACK); // Clear the display
         drawHeader();
         drawMenuListEmpty();
-        drawMenuList(false, false, false, true, false);
+        drawMenuListButtons(false, false, false, true, false);
       } else if (counter == 8) {      // WE MARK MENU 5 BACK
         menus[0] = 0;
         menus[1] = 0;
@@ -224,7 +233,7 @@ void loop() {
         tft.fillScreen(ST7735_BLACK); // Clear the display
         drawHeader();
         drawMenuListEmpty();
-        drawMenuList(false, false, false, false, true);
+        drawMenuListButtons(false, false, false, false, true);
       }  else if (counter < 0) {
         menus[0] = 1;
         menus[1] = 0;
@@ -333,13 +342,13 @@ void loop() {
       }
 
     } else if (menus[2] == 1) {
-      // Serial.println("We are marked MENU 3 - GO TO Humm PAGE");
+      // Serial.println("We are marked MENU 3 - GO TO hum PAGE");
       if (digitalRead(encoderSwitch) == LOW) {
         pages[0] = 0;
         pages[1] = 0;
         pages[2] = 0;
         pages[3] = 0;
-        pages[4] = 1;   // We choose Humm Page
+        pages[4] = 1;   // We choose hum Page
         // ------ //
         counter = 0;
         menus[0] = 1;
@@ -349,7 +358,7 @@ void loop() {
         menus[4] = 0;
       }
       if (pages[4] == 1) {
-        Serial.println("Go to Humm Page.");
+        Serial.println("Go to hum Page.");
         drawSelectedMenu(false, false, true, false, false); // Draw selected Menu 2 for GREEN border
         delay(1000); // If user holds, will be redirected back to Menu from Home, because home checks if user press the button!
         tft.fillScreen(ST7735_BLACK); // Clear the display
@@ -713,30 +722,34 @@ void loop() {
     aLastState = aState; // Updates the previous state of the outputA with the current state
   }
 
-  // -------------------------------------- HUMMIDITY PAGE ------------------------------------ //
+  // -------------------------------------- Humidity PAGE ------------------------------------ //
   if (pages[4] == 1) {
-    Serial.println("We are in humm page");
+    Serial.println("We are in hum page");
     tft.setTextSize(1);
     tft.setCursor(15, 50);
     tft.setTextColor(ST7735_BLUE);
-    tft.print("Conf Hummidity");
+    tft.print("Conf Humidity");
     drawHeader();
     if (digitalRead(encoderSwitch) == LOW) {  // We go back
-      tft.fillScreen(ST7735_BLACK); // Clear the display
-      drawHeader();
-      tft.setTextSize(1);
-      tft.setCursor(15, 50);
-      tft.setTextColor(ST7735_GREEN);
-      tft.print("Going Back.");
-      delay(3000); // Wait before show Menu, because if user little holds the button activate the first menu automaticly
-      pages[0] = 1;   // We return to Home page
-      pages[1] = 0;
+      pages[0] = 0;
+      pages[1] = 1;                          // We return to Menu page
       pages[2] = 0;
       pages[3] = 0;
       pages[4] = 0;
       pages[5] = 0;
+
+      // ------------- //
       tft.fillScreen(ST7735_BLACK); // Clear the display
-      drawHomePage();
+      drawHeader();
+      drawMenuListEmpty();
+      counter = 4;                           // Fix the counter for the Menu, so we can start the menu with Last choosen menu
+      menus[0] = 0;
+      menus[1] = 0;
+      menus[2] = 1;
+      menus[3] = 0;
+      menus[4] = 0;
+      drawMenuListButtons(false, false, true, false, false);
+      delay(1000); // Wait before show Menu, because if user little holds the button activate the first menu automatic
     }
     aLastState = aState; // Updates the previous state of the outputA with the current state
   }
@@ -744,28 +757,76 @@ void loop() {
 
   // -------------------------------------- About PAGE ------------------------------------ //
   if (pages[5] == 1) {
+    drawHeader();
     Serial.println("We are in About page");
     tft.setTextSize(1);
-    tft.setCursor(15, 50);
+    tft.setCursor(15, 15);
     tft.setTextColor(ST7735_BLUE);
     tft.print("Firmware Version");
-    drawHeader();
+    tft.setCursor(40, 30);
+    tft.setTextSize(2);
+    tft.setTextColor(GREEN);
+    tft.print(FIRMWARE_VERSION);
+    tft.drawFastHLine(25, 47, 70, RED);
+
+    tft.setTextSize(1);
+    tft.setCursor(5, 55);
+    tft.setTextColor(WHITE);
+    tft.print("Country  ");
+    tft.setTextColor(GREEN);
+    tft.print(COUNTRY);
+
+    tft.setCursor(5, 67);
+    tft.setTextColor(WHITE);
+    tft.print("Source   ");
+    tft.setTextColor(GREEN);
+    tft.print(CODE_LOCATION);
+
+    tft.setCursor(5, 79);
+    tft.setTextColor(WHITE);
+    tft.print("Owner    ");
+    tft.setTextColor(GREEN);
+    tft.print(CODE_ORIGIN);
+
+    tft.setCursor(5, 91);
+    tft.setTextColor(WHITE);
+    tft.print("Repo     ");
+    tft.setTextColor(GREEN);
+    tft.print(CODE_REPO);
+
+    tft.setCursor(5, 103);
+    tft.setTextColor(WHITE);
+    tft.print("Date     ");
+    tft.setTextColor(GREEN);
+    tft.print(__DATE__);
+
+
+    tft.setCursor(5, 115);
+    tft.setTextColor(WHITE);
+    tft.print("Time     ");
+    tft.setTextColor(GREEN);
+    tft.print(__TIME__);
+
     if (digitalRead(encoderSwitch) == LOW) {  // We go back
-      tft.fillScreen(ST7735_BLACK); // Clear the display
-      drawHeader();
-      tft.setTextSize(1);
-      tft.setCursor(15, 50);
-      tft.setTextColor(ST7735_GREEN);
-      tft.print("Going Back.");
-      delay(3000); // Wait before show Menu, because if user little holds the button activate the first menu automaticly
-      pages[0] = 1;   // We return to Home page
-      pages[1] = 0;
+      pages[0] = 0;
+      pages[1] = 1;                          // We return to Menu page
       pages[2] = 0;
       pages[3] = 0;
       pages[4] = 0;
       pages[5] = 0;
+
+      // ------------- //
       tft.fillScreen(ST7735_BLACK); // Clear the display
-      drawHomePage();
+      drawHeader();
+      drawMenuListEmpty();
+      counter = 6;                           // Fix the counter for the Menu, so we can start the menu with Last choosen menu
+      menus[0] = 0;
+      menus[1] = 0;
+      menus[2] = 0;
+      menus[3] = 1;
+      menus[4] = 0;
+      drawMenuListButtons(false, false, false, true, false);
+      delay(1000); // Wait before show Menu, because if user little holds the button activate the first menu automatic
     }
     aLastState = aState; // Updates the previous state of the outputA with the current state
   }
@@ -828,13 +889,13 @@ void drawTempPage() {
 
 void drawMenuListEmpty() {
   tft.setTextSize(1);
-  tft.setTextColor(ST7735_CYAN);
+  tft.setTextColor(WHITE);
   tft.setCursor(45, 25);
   tft.print("Temp");
   tft.setCursor(45, 45);
   tft.print("Clock");
   tft.setCursor(45, 65);
-  tft.print("Humm");
+  tft.print("Hum");
   tft.setCursor(45, 85);
   tft.print("About");
   tft.setCursor(45, 105);
@@ -870,7 +931,7 @@ void drawSelectedMenu(bool menu1IsSelected, bool menu2IsSelected, bool menu3IsSe
   }
 }
 
-void drawMenuList(bool menu1IsSelected, bool menu2IsSelected, bool menu3IsSelected, bool menu4IsSelected, bool menu5IsSelected) {
+void drawMenuListButtons(bool menu1IsSelected, bool menu2IsSelected, bool menu3IsSelected, bool menu4IsSelected, bool menu5IsSelected) {
   if (menu1IsSelected) {
     tft.drawFastHLine(35, 20, 56, ST7735_CYAN);
     tft.drawFastVLine(35, 20, 15, ST7735_CYAN);
@@ -970,32 +1031,101 @@ void drawHeader() {
 void drawHomePage() {
   // check if temp has different value
   if (temp != lastTempState) {
-    tft.fillRect(40, 40, 77, 49, BLACK);      // Clear the Temp Value Rectangle Area
+    tft.fillRect(0, 40, 128, 49, BLACK);      // Clear the Temp Value and Temp Image Rectangle Area
     lastTempState = temp;
   }
   drawHeader();
   // --------------------------TERMOMETER VALUES-------------------------------
   // TODO Change with the value from the sensor
   // tft.fillScreen(ST7735_BLACK);
-  tft.setCursor(40, 40);
+  tft.setCursor(40, 37);
   tft.setTextSize(7);
   printTermometerValues(temp);
+  printHumidityValues(hum);
   // -----------------------TERMOMETER STATUS ICON----------------------------------
-  termometerStatusImage(WHITE, RED, 10, 10, map(temp, 1, 60, 1 , 29));
+  if (temp >= 22 && temp <= 24) {
+    termometerStatusImage(WHITE, GREEN, 10, 10, map(temp, 1, 60, 1 , 29));
+  } else if (temp > 24) {
+    termometerStatusImage(WHITE, RED, 10, 10, map(temp, 1, 60, 1 , 29));
+  } else if (temp < 22) {
+    termometerStatusImage(WHITE, BLUE, 10, 10, map(temp, 1, 60, 1 , 29));
+  }
+
+  // -------------------- Humidity STATUS ICONS -------------------------------
+  HumidityStatusImage(BLUE, CYAN, 10, 98);
+  HumidityStatusImage(BLUE, CYAN, 5, 108);
+
+}
+
+// Warning - This method is using 3% of Storage Space
+void HumidityStatusImage(uint16_t colorBorder, uint16_t colorFillUp, uint16_t x, uint16_t y) {
+  tft.setCursor(1, 100);
+  tft.drawPixel(x , y + 3, colorBorder);
+  tft.drawPixel(x - 1, y + 4, colorBorder);
+  tft.drawPixel(x - 2, y + 5, colorBorder);
+  tft.drawPixel(x - 2, y + 6, colorBorder);
+  tft.drawPixel(x - 2, y + 7, colorBorder);
+  tft.drawPixel(x - 1, y + 8, colorBorder);
+  tft.drawPixel(x, y + 9, colorFillUp);
+  tft.drawPixel(x + 1, y + 10, colorBorder);
+  tft.drawPixel(x + 2, y + 10, colorBorder);
+  tft.drawPixel(x + 2, y + 9, colorBorder);
+  tft.drawPixel(x + 3, y + 8, colorBorder);
+  tft.drawPixel(x + 4, y + 7, colorBorder);
+  tft.drawPixel(x + 4, y + 6, colorBorder);
+  tft.drawPixel(x + 4, y + 6, colorBorder);
+  tft.drawPixel(x, y + 8, colorFillUp);
+  tft.drawPixel(x + 1, y + 9, colorFillUp);
+  tft.drawPixel(x + 1, y + 8, colorFillUp);
+  tft.drawPixel(x + 1, y + 7, colorFillUp);
+  tft.drawPixel(x + 2, y + 7, colorFillUp);
+  tft.drawPixel(x, y + 7, colorFillUp);
+  tft.drawPixel(x - 1, y + 7, colorFillUp);
+  tft.drawPixel(x - 1, y + 6, colorFillUp);
+  tft.drawPixel(x, y + 6, colorFillUp);
+  tft.drawPixel(x + 1, y + 6, colorFillUp);
+  tft.drawPixel(x + 2, y + 6, colorFillUp);
+  tft.drawPixel(x + 3, y + 5, colorFillUp);
+  tft.drawPixel(x + 2, y + 5, colorFillUp);
+  tft.drawPixel(x + 1, y + 5, colorFillUp);
+  tft.drawPixel(x, y + 5, colorFillUp);
+  tft.drawPixel(x - 1, y + 5, colorFillUp);
+  tft.drawPixel(x + 2, y + 4, colorFillUp);
+  tft.drawPixel(x + 1, y + 4, colorFillUp);
+  tft.drawPixel(x, y + 4, colorFillUp);
+  tft.drawPixel(x + 1, y + 3, colorFillUp);
+
+}
+
+void printHumidityValues(int hum) {
+  if (hum > 99) { // Prevent display the 100th value, we dont need this space on the screen
+    hum = 99;
+  }
+  if (lasthumState != hum) {
+    tft.fillRect(18, 100, 35, 23, BLACK);
+    lasthumState = hum;
+  }
+
+  tft.setCursor(18, 100);
+  tft.setTextColor(CYAN);
+  tft.setTextSize(3);
+  tft.print(hum);
+
+  // Draw % symbol
+  tft.drawCircle(58, 104, 3, CYAN);
+  tft.drawCircle(68, 116, 3, CYAN);
+  tft.drawLine(58, 118, 68, 102, CYAN);
 }
 
 void printTermometerValues(int temp) {
-  if (temp >= 20 && temp <= 22) {
+  if (temp >= 22 && temp <= 24) {
     tft.setTextColor(ST7735_GREEN);
     tft.print(temp);
   } else if (temp > 24) {
     tft.setTextColor(ST7735_RED);
     tft.print(temp);
-  } else if (temp < 20) {
+  } else if (temp < 22) {
     tft.setTextColor(ST7735_BLUE);
-    tft.print(temp);
-  } else if (temp > 22 && temp <= 24) {
-    tft.setTextColor(ST7735_YELLOW);
     tft.print(temp);
   }
 }
@@ -1030,7 +1160,7 @@ long readVcc() {
 
   delay(2); // Wait for Vref to settle
   ADCSRA |= _BV(ADSC); // Start conversion
-  while (bit_is_set(ADCSRA, ADSC)); // measuring
+  while (bit_is_set(ADCSRA, ADSC)); // measunbring
 
   uint8_t low  = ADCL; // must read ADCL first - it then locks ADCH
   uint8_t high = ADCH; // unlocks both
@@ -1074,20 +1204,12 @@ String getClock() {
   int hours = 0;
   int minutes = 0;
 
-
-
-
   if (RTC.read(tm)) {
     hours = tm.Hour;
     minutes = tm.Minute;
-
-    if (hours != hourLastState) {
-      Serial.println("refreshing Hour");
-      tft.fillRect(0, 0, 14, 13, BLACK);
+    if (hours != hourLastState || minutes != minutesLastState) {
+      tft.fillRect(0, 0, 34, 13, BLACK);
       hourLastState = hours;
-    } else if (minutes != minutesLastState) {
-      Serial.println("refreshing Minutes");
-      tft.fillRect(20, 0, 14, 13, BLACK);
       minutesLastState = minutes;
     }
 
@@ -1143,10 +1265,7 @@ int getDhtData(String option) {
   // Wait a few seconds between measurements.
   // Reading temperature or humidity takes about 250 milliseconds!
   // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
-  delay(200);
-  // float h = dht.readHumidity();
-  // Read temperature as Celsius (the default)
-  float t = dht.readTemperature();
+
   // Read temperature as Fahrenheit (isFahrenheit = true)
   //  float f = dht.readTemperature(true);
   // Check if any reads failed and exit early (to try again).
@@ -1154,9 +1273,10 @@ int getDhtData(String option) {
   // Serial.println("Failed to read from DHT sensor!");  //TODO - display error message on the screen, not system out println
   //   return;
   //  }
-  if (isnan(t)) {
-    return;
-  }
+  //  if (isnan(t) || isnan(h)) {  // Check for errors
+  //    return;
+  //  }
+
   // Compute heat index in Fahrenheit (the default)
   //  float hif = dht.computeHeatIndex(f, h);
   // Compute heat index in Celsius (isFahreheit = false)
@@ -1177,8 +1297,14 @@ int getDhtData(String option) {
     Serial.println(" *F");
   */
   if (option == "temp") {
+    // Read temperature as Celsius (the default)
+    float t = dht.readTemperature();
     return t;
+  } else if (option == "hum") {
+    float h = dht.readHumidity();
+    return h;
   }
+  delay(250);
 }
 
 void printFirmwareInfo() {
