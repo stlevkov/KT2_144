@@ -160,7 +160,7 @@ void loop() {
       menus[2] = 0;
       menus[3] = 0;
       menus[4] = 0;
-      drawMenuListButtons(true, false, false, false, false);
+      drawMenuListButtons( false, true, false, false, false, false);
       delay(1000); // Wait before show Menu, because if user little holds the button activate the first menu automaticly
     } else {
       // We draw Home page here:
@@ -193,7 +193,7 @@ void loop() {
         tft.fillScreen(ST7735_BLACK); // Clear the display
         drawHeader();
         drawMenuListEmpty();
-        drawMenuListButtons(true, false, false, false, false);
+        drawMenuListButtons(false, true, false, false, false, false);
       } else if (counter == 2) {     //  WE MARK MENU 2 CLOCK
         menus[0] = 0;
         menus[1] = 1;
@@ -203,7 +203,7 @@ void loop() {
         tft.fillScreen(ST7735_BLACK); // Clear the display
         drawHeader();
         drawMenuListEmpty();
-        drawMenuListButtons(false, true, false, false, false);
+        drawMenuListButtons(false, false, true, false, false, false);
       } else if (counter == 4) {    // WE MARK MENU 3 hum
         menus[0] = 0;
         menus[1] = 0;
@@ -213,7 +213,7 @@ void loop() {
         tft.fillScreen(ST7735_BLACK); // Clear the display
         drawHeader();
         drawMenuListEmpty();
-        drawMenuListButtons(false, false, true, false, false);
+        drawMenuListButtons(false, false, false, true, false, false);
       } else if (counter == 6) {     // WE MARK MENU 4 About
         menus[0] = 0;
         menus[1] = 0;
@@ -223,7 +223,7 @@ void loop() {
         tft.fillScreen(ST7735_BLACK); // Clear the display
         drawHeader();
         drawMenuListEmpty();
-        drawMenuListButtons(false, false, false, true, false);
+        drawMenuListButtons(false, false, false, false, true, false);
       } else if (counter == 8) {      // WE MARK MENU 5 BACK
         menus[0] = 0;
         menus[1] = 0;
@@ -233,7 +233,7 @@ void loop() {
         tft.fillScreen(ST7735_BLACK); // Clear the display
         drawHeader();
         drawMenuListEmpty();
-        drawMenuListButtons(false, false, false, false, true);
+        drawMenuListButtons(false, false, false, false, false, true);
       }  else if (counter < 0) {
         menus[0] = 1;
         menus[1] = 0;
@@ -272,7 +272,7 @@ void loop() {
       }
       if (pages[2] == 1) {
         Serial.println("Go to Temp Calibration Page.");
-        drawSelectedMenu(true, false, false, false, false); // Draw selected Menu 1 for GREEN border
+        drawMenuListButtons(true , true, false, false, false, false); // Draw selected Menu 1 for GREEN border
         delay(1000); // If user holds, will be redirected back to Menu from Home, because home checks if user press the button!
         counter = 0;
         temp = getDhtData("temp");
@@ -300,7 +300,7 @@ void loop() {
       }
       if (pages[3] == 1) {
         Serial.println("Go to CLOCK Calibration Page.");
-        drawSelectedMenu(false, true, false, false, false); // Draw selected Menu 2 for GREEN border
+        drawMenuListButtons(true, false, true, false, false, false); // Draw selected Menu 2 for GREEN border
         delay(1000); // If user holds, will be redirected back to Menu from Home, because home checks if user press the button!
         tft.fillScreen(ST7735_BLACK); // Clear the display
         drawHeader();
@@ -359,7 +359,7 @@ void loop() {
       }
       if (pages[4] == 1) {
         Serial.println("Go to hum Page.");
-        drawSelectedMenu(false, false, true, false, false); // Draw selected Menu 2 for GREEN border
+        drawMenuListButtons(true, false, false, true, false, false); // Draw selected Menu 2 for GREEN border
         delay(1000); // If user holds, will be redirected back to Menu from Home, because home checks if user press the button!
         tft.fillScreen(ST7735_BLACK); // Clear the display
       }
@@ -384,7 +384,7 @@ void loop() {
       }
       if (pages[5] == 1) {
         Serial.println("Go to About Page.");
-        drawSelectedMenu(false, false, false, true, false); // Draw selected Menu 2 for GREEN border
+        drawMenuListButtons(true,false, false, false, true, false); // Draw selected Menu 2 for GREEN border
         delay(1000); // If user holds, will be redirected back to Menu from Home, because home checks if user press the button!
         tft.fillScreen(ST7735_BLACK); // Clear the display
       }
@@ -408,7 +408,7 @@ void loop() {
       }
       if (pages[0] == 1) {
         Serial.println("Return to Home Page.");
-        drawSelectedMenu(false, false, false, false, true);
+        drawMenuListButtons(true, false, false, false, false, true);
         delay(1000); // If user holds, will be redirected back to Menu from Home, because home checks if user press the button!
         tft.fillScreen(ST7735_BLACK); // Clear the display
 
@@ -748,7 +748,7 @@ void loop() {
       menus[2] = 1;
       menus[3] = 0;
       menus[4] = 0;
-      drawMenuListButtons(false, false, true, false, false);
+      drawMenuListButtons(false, false, false, true, false, false);
       delay(1000); // Wait before show Menu, because if user little holds the button activate the first menu automatic
     }
     aLastState = aState; // Updates the previous state of the outputA with the current state
@@ -825,7 +825,7 @@ void loop() {
       menus[2] = 0;
       menus[3] = 1;
       menus[4] = 0;
-      drawMenuListButtons(false, false, false, true, false);
+      drawMenuListButtons(false, false, false, false, true, false);
       delay(1000); // Wait before show Menu, because if user little holds the button activate the first menu automatic
     }
     aLastState = aState; // Updates the previous state of the outputA with the current state
@@ -902,61 +902,24 @@ void drawMenuListEmpty() {
   tft.print("Back");
 }
 
-void drawSelectedMenu(bool menu1IsSelected, bool menu2IsSelected, bool menu3IsSelected, bool menu4IsSelected, bool menu5IsSelected) {
-  if (menu1IsSelected) {
-    tft.drawFastHLine(35, 20, 56, ST7735_GREEN);
-    tft.drawFastVLine(35, 20, 15, ST7735_GREEN);
-    tft.drawFastHLine(35, 35, 56, ST7735_GREEN);
-    tft.drawFastVLine(90, 20, 15, ST7735_GREEN);
-  } else if (menu2IsSelected) {
-    tft.drawFastHLine(35, 40, 56, ST7735_GREEN);
-    tft.drawFastVLine(35, 40, 15, ST7735_GREEN);
-    tft.drawFastHLine(35, 55, 56, ST7735_GREEN);
-    tft.drawFastVLine(90, 40, 15, ST7735_GREEN);
-  } else if (menu3IsSelected) {
-    tft.drawFastHLine(35, 60, 56, ST7735_GREEN);
-    tft.drawFastVLine(35, 60, 15, ST7735_GREEN);
-    tft.drawFastHLine(35, 75, 56, ST7735_GREEN);
-    tft.drawFastVLine(90, 60, 15, ST7735_GREEN);
-  } else if (menu4IsSelected) {
-    tft.drawFastHLine(35, 80, 56, ST7735_GREEN);
-    tft.drawFastVLine(35, 80, 15, ST7735_GREEN);
-    tft.drawFastHLine(35, 95, 56, ST7735_GREEN);
-    tft.drawFastVLine(90, 80, 15, ST7735_GREEN);
-  } else if (menu5IsSelected) {
-    tft.drawFastHLine(35, 100, 56, ST7735_GREEN);
-    tft.drawFastVLine(35, 100, 15, ST7735_GREEN);
-    tft.drawFastHLine(35, 115, 56, ST7735_GREEN);
-    tft.drawFastVLine(90, 100, 15, ST7735_GREEN);
+void drawMenuListButtons(bool isPresed, bool menu1IsSelected, bool menu2IsSelected, bool menu3IsSelected, bool menu4IsSelected, bool menu5IsSelected) {
+  uint16_t color1;
+  if (isPresed) {
+    color1 = GREEN;
+  } else {
+    color1 = CYAN;
   }
-}
 
-void drawMenuListButtons(bool menu1IsSelected, bool menu2IsSelected, bool menu3IsSelected, bool menu4IsSelected, bool menu5IsSelected) {
   if (menu1IsSelected) {
-    tft.drawFastHLine(35, 20, 56, ST7735_CYAN);
-    tft.drawFastVLine(35, 20, 15, ST7735_CYAN);
-    tft.drawFastHLine(35, 35, 56, ST7735_CYAN);
-    tft.drawFastVLine(90, 20, 15, ST7735_CYAN);
+    tft.drawRect(35, 20, 56, 15, color1);
   } else if (menu2IsSelected) {
-    tft.drawFastHLine(35, 40, 56, ST7735_CYAN);
-    tft.drawFastVLine(35, 40, 15, ST7735_CYAN);
-    tft.drawFastHLine(35, 55, 56, ST7735_CYAN);
-    tft.drawFastVLine(90, 40, 15, ST7735_CYAN);
+    tft.drawRect(35, 40, 56, 15, color1);
   } else if (menu3IsSelected) {
-    tft.drawFastHLine(35, 60, 56, ST7735_CYAN);
-    tft.drawFastVLine(35, 60, 15, ST7735_CYAN);
-    tft.drawFastHLine(35, 75, 56, ST7735_CYAN);
-    tft.drawFastVLine(90, 60, 15, ST7735_CYAN);
+    tft.drawRect(35, 60, 56, 15, color1);
   } else if (menu4IsSelected) {
-    tft.drawFastHLine(35, 80, 56, ST7735_CYAN);
-    tft.drawFastVLine(35, 80, 15, ST7735_CYAN);
-    tft.drawFastHLine(35, 95, 56, ST7735_CYAN);
-    tft.drawFastVLine(90, 80, 15, ST7735_CYAN);
+    tft.drawRect(35, 80, 56, 15, color1);
   } else if (menu5IsSelected) {
-    tft.drawFastHLine(35, 100, 56, ST7735_CYAN);
-    tft.drawFastVLine(35, 100, 15, ST7735_CYAN);
-    tft.drawFastHLine(35, 115, 56, ST7735_CYAN);
-    tft.drawFastVLine(90, 100, 15, ST7735_CYAN);
+    tft.drawRect(35, 100, 56, 15, color1);
   }
 }
 
