@@ -1,6 +1,7 @@
-# 1.44-Home-Thermometer
-Arduino based 1.44" 65K color Thermometer for baby room - Calibrated code.
+# KT2_144
+<h2>Katrin Thermometer V2 1.44"</h2>
 
+Arduino based 1.44" 65K color Thermometer for baby room - Calibrated code.
 
 Sketch uses 26790 bytes (87%) of program storage space. Maximum is 30720 bytes.
 Global variables use 1448 bytes (70%) of dynamic memory, leaving 600 bytes for local variables. Maximum is 2048 bytes.
