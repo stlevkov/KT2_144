@@ -24,6 +24,9 @@ Device duration: ~ 10h
 Battery: 3.7V 650mAh, 
 Battery RTC: 3.3V CR2032
 
+<h2>Display Interface</h2>
+
+![Project image](https://github.com/stlevkov/KT2_144/blob/master/Resources/display_interface.jpg)
 
 <h2>Project Diagram </h2>
 
@@ -36,4 +39,5 @@ Battery RTC: 3.3V CR2032
 <h2>Picture project standby</h2>
 
 ![Project image](https://i.imgur.com/T4G7s4b.jpg)
+
 
