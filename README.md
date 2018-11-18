@@ -38,6 +38,6 @@ Battery RTC: 3.3V CR2032
 
 <h2>Picture project standby</h2>
 
-![Project image](https://i.imgur.com/T4G7s4b.jpg)
+![Project image](https://github.com/stlevkov/KT2_144/blob/master/Resources/project_standby.jpg)
 
 
