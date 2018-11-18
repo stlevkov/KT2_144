@@ -993,8 +993,9 @@ void drawHeader() {
 
 void drawHomePage() {
   // check if temp has different value
+  
   if (temp != lastTempState) {
-    tft.fillRect(0, 40, 128, 49, BLACK);      // Clear the Temp Value and Temp Image Rectangle Area
+    tft.fillRect(0, 35, 128, 55, BLACK);      // Clear the Temp Value and Temp Image Rectangle Area
     lastTempState = temp;
   }
   drawHeader();
