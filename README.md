@@ -9,8 +9,8 @@ Sketch uses 26232 bytes (85%) of program storage space. Maximum is 30720 bytes.
 Global variables use 1330 bytes (64%) of dynamic memory, leaving 718 bytes for local variables. Maximum is 2048 bytes.
 
 <b>Power Characteristics:</b>
-Min: 0.101A, (Idle)
-Max: 0.177A, (Rotary encoder push)
+Min: 0.102A (Idle), 
+Max: 0.177A (Rotary encoder push), 
 Power usage: ~ 0.515W
 
 <b>Charging:</b>
@@ -25,15 +25,15 @@ Battery: 3.7V 650mAh,
 Battery RTC: 3.3V CR2032
 
 
-<h2>Project Diagram: </h2>
+<h2>Project Diagram </h2>
 
 ![Project image](https://github.com/stlevkov/1.44-Home-Thermometer/blob/master/Resources/fritzing_katrin_therm.png)
 
-<h2>Power usage: </h2>
+<h2>Power usage </h2>
 
 ![Project image](https://github.com/stlevkov/KT2_144/blob/master/Resources/power_usage.png)
 
-<h2>Picture standby:</h2>
+<h2>Picture project standby</h2>
 
 ![Project image](https://i.imgur.com/T4G7s4b.jpg)
 
