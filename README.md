@@ -1,6 +1,4 @@
 # KT2_144
-<h2>Katrin Thermometer V2 1.44"</h2>
-
 Arduino based 1.44" 65K color Thermometer for baby room - Calibrated code.
 
 -Version 1.2 - Many fixes, new features, check commit history
