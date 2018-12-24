@@ -3,9 +3,13 @@
 #include <DS1307RTC.h>              // Clock library
 
 int temp = 0;                       // Holds the Temp variable for reading from DHT Sensor
-int hum = 0;                       // Holds the hum var
+int tempMin = 0;                    // Holds the minimum recorded temp
+int tempMax = 0;                    // Holds the maximum recorded temp
+int lastTempMin = 0;                // Needed for refreshing the Temp Min value
+int lastTempMax = 0;                // Needed for refreshing the Temp Max value
+int hum = 0;                        // Holds the hum var
 int lastTempState = 0;              // define the last state of the temp measurement
-int lasthumState = 0;              // define the last state of the hum measurement
+int lasthumState = 0;               // define the last state of the hum measurement
 int tempCalibration = 0;            // define the calibration offset between (+ and -)
 int lastTempCalibrationState = 1;   // define calibration state for the calibration of the Temp value
 
@@ -30,7 +34,7 @@ DHT dht(DHTPIN, DHTTYPE);
 #define TFT_RST    8               // you can also connect this to the Arduino reset
 #define TFT_DC     9
 
-// Color definitions for using tft library HEXs instead of ST7735_BLUE for example
+// Color definitions for using tft library HEXs instead of ST7735_COLORNAME for example
 #define BLACK 0x0000
 #define BLUE 0x001F
 #define RED 0xF800
@@ -40,7 +44,7 @@ DHT dht(DHTPIN, DHTTYPE);
 #define YELLOW 0xFFE0
 #define WHITE 0xFFFF
 
-
+// Define your project info here to show on about page
 #define FIRMWARE_VERSION "1.2"
 #define COUNTRY "Bulgaria"
 #define CODE_LOCATION "GitHub"
@@ -50,17 +54,16 @@ DHT dht(DHTPIN, DHTTYPE);
 // Option 1 (recommended): must use the hardware SPI pins
 // (for UNO thats sclk = 13 and sid = 11) and pin 10 must be
 // an output. This is much faster - also required if you want
-// to use the microSD card (see the image drawing example)
+// to use the microSD card
 Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS,  TFT_DC, TFT_RST);
 
 // Option 2: use any pins but a little slower!
-#define TFT_SCLK 13   // set these to be whatever pins you like!
-#define TFT_MOSI 11   // set these to be whatever pins you like!
-//Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
+#define TFT_SCLK 13
+#define TFT_MOSI 11
 
-float p = 3.1415926;    // define pi first 7 numbers
+float p = 3.1415926;                    // define pi first 7 numbers
 
-// Define D3, D4 for Rotary Encoder Button
+// Define D3, D4 for Rotary Encoder Button and the switch
 #define outputA 3
 #define outputB 4
 #define encoderSwitch 2
@@ -76,6 +79,7 @@ int aLastState;                         // Saving last state of the encoder
 
 int vcc = 0;                            // Reading the voltage internally in milliVolts
 int vccLastState = 0;                   // Saving the last state of the reading for clearing the display when the voltage change
+const int vccCalibration = 130;         // Use this with minus offset ( - 130);
 
 // Used by Clock Adjustion Page for selecting the current position and colored it by defined color in the methods bellow
 int selectedClockIndex = 0;             // Posibble values for Clock Adjust Page: 0 - hours, 1 - minutes, 2 - day, 3 - month, 4 - year
@@ -85,10 +89,11 @@ const char *monthName[12] = {
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 };
-tmElements_t tm;                        // The importent thing here is this Class for RTC lib
+tmElements_t tm;                        // Define the RTC Class use
 
-int hourLastState = 0;
-int minutesLastState = 0;
+int hourLastState = 0;                  // Needed for refreshing the Hour value
+int minutesLastState = 0;               // Needed for refreshing the Minutes value
+int secondsLastState = 0;               // Needed for refreshing the Seconds value
 
 int hours;
 int minutes;
@@ -114,28 +119,35 @@ void setup() {
   tft.initR(INITR_144GREENTAB);         // initialize a ST7735S chip, black tab
 
   // Set first background to black
-  tft.fillScreen(ST7735_BLACK);
+  tft.fillScreen(BLACK);
 
 
   // This info is for Boot up, showing the last firmware compile date & time - there is 3 sec delay in here
   printFirmwareInfo();
 
-  pages[0] = 1;  // Home Page
-  pages[1] = 0;  // Menu Page
-  pages[2] = 0;  // Home Page + Temp ajust calibration
-  pages[3] = 0;  // Home Page + Clock ajust
-  pages[4] = 0;  // Home Page + hum conf
-  pages[5] = 0;  // Home Page + About
-  // -------------------------------------- +++++   DHT22     +++++------------------------------------ //
-  // Serial.println("DHT22 begin()!");
+  // Pages
+  pages[0] = 1;  // Home
+  pages[1] = 0;  // Menu
+  pages[2] = 0;  // Temp ajust calibration
+  pages[3] = 0;  // Clock ajust
+  pages[4] = 0;  // Battery info
+  pages[5] = 0;  // About
+
+  // Menus
+  menus[0] = 1;  // Temp
+  menus[1] = 0;  // Clock
+  menus[2] = 0;  // Batt
+  menus[3] = 0;  // About
+  menus[4] = 0;  // Back
+  // ---------------- +++++   DHT22     +++++----------------- //
   dht.begin();
-  // -------------------------------------- +++++   DHT22     +++++------------------------------------ //
+
+  // ---------------- +++++  INIT TEMP MIN MAX     +++++----------------- //
+  tempMin = getDhtData("temp");
+  tempMax = tempMin;
 }
 
 void loop() {
-  // TODO ALWAYS GET THE NEW VALUES FOR - TEMP + CALIBRATION
-
-
   // -------------------------------------- HOME PAGE ------------------------------------ //
   if (pages[0] == 1) {
 
@@ -151,7 +163,7 @@ void loop() {
       pages[3] = 0;
       pages[4] = 0;
       pages[5] = 0;
-      tft.fillScreen(ST7735_BLACK); // Clear the display
+      tft.fillScreen(BLACK); // Clear the display
       drawHeader();
       drawMenuListEmpty();
       counter = 0;                           // Clear the counter for the Menu, so we can start the menu with 1st
@@ -185,42 +197,42 @@ void loop() {
       }
       //  The counter is from 0, 2, 4, 6, 8
       if (counter == 0) {  // WE MARK MENU 1 - TEMP
-        menus[0] = 1;
+        menus[0] = 1; //TEMP
         menus[1] = 0;
         menus[2] = 0;
         menus[3] = 0;
         menus[4] = 0;
-        tft.fillScreen(ST7735_BLACK); // Clear the display
+        tft.fillScreen(BLACK); // Clear the display
         drawHeader();
         drawMenuListEmpty();
         drawMenuListButtons(false, true, false, false, false, false);
       } else if (counter == 2) {     //  WE MARK MENU 2 CLOCK
         menus[0] = 0;
-        menus[1] = 1;
+        menus[1] = 1; //CLOCK
         menus[2] = 0;
         menus[3] = 0;
         menus[4] = 0;
-        tft.fillScreen(ST7735_BLACK); // Clear the display
+        tft.fillScreen(BLACK); // Clear the display
         drawHeader();
         drawMenuListEmpty();
         drawMenuListButtons(false, false, true, false, false, false);
-      } else if (counter == 4) {    // WE MARK MENU 3 hum
+      } else if (counter == 4) {    // WE MARK MENU 3 BATT
         menus[0] = 0;
         menus[1] = 0;
-        menus[2] = 1;
+        menus[2] = 1; //BATT
         menus[3] = 0;
         menus[4] = 0;
-        tft.fillScreen(ST7735_BLACK); // Clear the display
+        tft.fillScreen(BLACK); // Clear the display
         drawHeader();
         drawMenuListEmpty();
         drawMenuListButtons(false, false, false, true, false, false);
-      } else if (counter == 6) {     // WE MARK MENU 4 About
+      } else if (counter == 6) {     // WE MARK MENU 4 ABOUT
         menus[0] = 0;
         menus[1] = 0;
         menus[2] = 0;
-        menus[3] = 1;
+        menus[3] = 1; //ABOUT
         menus[4] = 0;
-        tft.fillScreen(ST7735_BLACK); // Clear the display
+        tft.fillScreen(BLACK); // Clear the display
         drawHeader();
         drawMenuListEmpty();
         drawMenuListButtons(false, false, false, false, true, false);
@@ -229,8 +241,8 @@ void loop() {
         menus[1] = 0;
         menus[2] = 0;
         menus[3] = 0;
-        menus[4] = 1;
-        tft.fillScreen(ST7735_BLACK); // Clear the display
+        menus[4] = 1; //BACK
+        tft.fillScreen(BLACK); // Clear the display
         drawHeader();
         drawMenuListEmpty();
         drawMenuListButtons(false, false, false, false, false, true);
@@ -302,18 +314,18 @@ void loop() {
         Serial.println("Go to CLOCK Calibration Page.");
         drawMenuListButtons(true, false, true, false, false, false); // Draw selected Menu 2 for GREEN border
         delay(1000); // If user holds, will be redirected back to Menu from Home, because home checks if user press the button!
-        tft.fillScreen(ST7735_BLACK); // Clear the display
+        tft.fillScreen(BLACK); // Clear the display
         drawHeader();
         tft.setCursor(15, 20);
         tft.setTextSize(1);
-        tft.setTextColor(ST7735_YELLOW);
+        tft.setTextColor(YELLOW);
         tft.print("DATE & TIME PAGE");
         tft.setCursor(15, 30);
         tft.setTextSize(1);
-        tft.setTextColor(ST7735_BLUE);
+        tft.setTextColor(BLUE);
         tft.print("Rotate to adjust");
         tft.setCursor(20, 100);
-        tft.setTextColor(ST7735_WHITE);
+        tft.setTextColor(WHITE);
         tft.print("Click to save.");
 
         tmElements_t tm;                         // Initialize Time before the loop in the page
@@ -328,40 +340,40 @@ void loop() {
         // Display first init before the first Rotation of the button to show the clock
         tft.setCursor(20, 50);
         tft.setTextSize(3);
-        tft.setTextColor(ST7735_YELLOW);
+        tft.setTextColor(YELLOW);
         tft.print(hours);
 
-        tft.setTextColor(ST7735_WHITE);
+        tft.setTextColor(WHITE);
         tft.setCursor(70, 50);
         tft.print(minutes);
 
-        tft.setTextColor(ST7735_WHITE);
+        tft.setTextColor(WHITE);
         tft.setCursor(55, 50);
         tft.print(":");
 
       }
 
     } else if (menus[2] == 1) {
-      // Serial.println("We are marked MENU 3 - GO TO hum PAGE");
+      // Serial.println("We are marked MENU 3 - GO TO BATTERY PAGE");
       if (digitalRead(encoderSwitch) == LOW) {
         pages[0] = 0;
         pages[1] = 0;
         pages[2] = 0;
         pages[3] = 0;
-        pages[4] = 1;   // We choose hum Page
+        pages[4] = 1;   // We choose Battery Page
         // ------ //
         counter = 0;
         menus[0] = 1;
-        menus[1] = 0;
+        menus[1] = 0;  // We choose Batt Menu
         menus[2] = 0;
         menus[3] = 0;
         menus[4] = 0;
       }
       if (pages[4] == 1) {
-        Serial.println("Go to hum Page.");
+        Serial.println("Go to Batt Page.");
         drawMenuListButtons(true, false, false, true, false, false); // Draw selected Menu 2 for GREEN border
         delay(1000); // If user holds, will be redirected back to Menu from Home, because home checks if user press the button!
-        tft.fillScreen(ST7735_BLACK); // Clear the display
+        tft.fillScreen(BLACK); // Clear the display
       }
 
     } else if (menus[3] == 1) {
@@ -384,9 +396,9 @@ void loop() {
       }
       if (pages[5] == 1) {
         Serial.println("Go to About Page.");
-        drawMenuListButtons(true,false, false, false, true, false); // Draw selected Menu 2 for GREEN border
+        drawMenuListButtons(true, false, false, false, true, false); // Draw selected Menu 2 for GREEN border
         delay(1000); // If user holds, will be redirected back to Menu from Home, because home checks if user press the button!
-        tft.fillScreen(ST7735_BLACK); // Clear the display
+        tft.fillScreen(BLACK); // Clear the display
       }
 
     } else if (menus[4] == 1) {
@@ -410,7 +422,7 @@ void loop() {
         Serial.println("Return to Home Page.");
         drawMenuListButtons(true, false, false, false, false, true);
         delay(1000); // If user holds, will be redirected back to Menu from Home, because home checks if user press the button!
-        tft.fillScreen(ST7735_BLACK); // Clear the display
+        tft.fillScreen(BLACK); // Clear the display
 
       }
     }
@@ -487,30 +499,30 @@ void loop() {
             hoursCounter ++;
             hours = hoursCounter;
 
-            tft.fillScreen(ST7735_BLACK); // Clear the display
+            tft.fillScreen(BLACK); // Clear the display
             drawHeader();
             tft.setCursor(15, 20);
             tft.setTextSize(1);
-            tft.setTextColor(ST7735_YELLOW);
+            tft.setTextColor(YELLOW);
             tft.print("DATE & TIME PAGE");
             tft.setCursor(15, 30);
             tft.setTextSize(1);
-            tft.setTextColor(ST7735_BLUE);
+            tft.setTextColor(BLUE);
             tft.print("Rotate to adjust");
             tft.setCursor(20, 100);
-            tft.setTextColor(ST7735_WHITE);
+            tft.setTextColor(WHITE);
             tft.print("Click to save.");
 
             tft.setCursor(20, 50);
             tft.setTextSize(3);
-            tft.setTextColor(ST7735_YELLOW);
+            tft.setTextColor(YELLOW);
             tft.print(hours);
 
-            tft.setTextColor(ST7735_WHITE);
+            tft.setTextColor(WHITE);
             tft.setCursor(70, 50);
             tft.print(minutes);
 
-            tft.setTextColor(ST7735_WHITE);
+            tft.setTextColor(WHITE);
             tft.setCursor(55, 50);
             tft.print(":");
           }
@@ -524,30 +536,30 @@ void loop() {
             hoursCounter --;
             hours = hoursCounter;
 
-            tft.fillScreen(ST7735_BLACK); // Clear the display
+            tft.fillScreen(BLACK); // Clear the display
             drawHeader();
             tft.setCursor(15, 20);
             tft.setTextSize(1);
-            tft.setTextColor(ST7735_YELLOW);
+            tft.setTextColor(YELLOW);
             tft.print("DATE & TIME PAGE");
             tft.setCursor(15, 30);
             tft.setTextSize(1);
-            tft.setTextColor(ST7735_BLUE);
+            tft.setTextColor(BLUE);
             tft.print("Rotate to adjust");
             tft.setCursor(20, 100);
-            tft.setTextColor(ST7735_WHITE);
+            tft.setTextColor(WHITE);
             tft.print("Click to save.");
 
             tft.setCursor(20, 50);
             tft.setTextSize(3);
-            tft.setTextColor(ST7735_YELLOW);
+            tft.setTextColor(YELLOW);
             tft.print(hours);
 
-            tft.setTextColor(ST7735_WHITE);
+            tft.setTextColor(WHITE);
             tft.setCursor(70, 50);
             tft.print(minutes);
 
-            tft.setTextColor(ST7735_WHITE);
+            tft.setTextColor(WHITE);
             tft.setCursor(55, 50);
             tft.print(":");
 
@@ -565,30 +577,30 @@ void loop() {
         Serial.println("selectedClockIndex changed!");
 
         // Change colors of the numbers - Color minutes
-        tft.fillScreen(ST7735_BLACK); // Clear the display
+        tft.fillScreen(BLACK); // Clear the display
         drawHeader();
         tft.setCursor(15, 20);
         tft.setTextSize(1);
-        tft.setTextColor(ST7735_YELLOW);
+        tft.setTextColor(YELLOW);
         tft.print("DATE & TIME PAGE");
         tft.setCursor(15, 30);
         tft.setTextSize(1);
-        tft.setTextColor(ST7735_BLUE);
+        tft.setTextColor(BLUE);
         tft.print("Rotate to adjust");
         tft.setCursor(20, 100);
-        tft.setTextColor(ST7735_WHITE);
+        tft.setTextColor(WHITE);
         tft.print("Click to save.");
 
         tft.setCursor(20, 50);
         tft.setTextSize(3);
-        tft.setTextColor(ST7735_WHITE);              // Here   Colored color for choosen is Yellow
+        tft.setTextColor(WHITE);              // Here   Colored color for choosen is Yellow
         tft.print(hours);
 
-        tft.setTextColor(ST7735_YELLOW);            // Here    Colored color for choosen is Yellow
+        tft.setTextColor(YELLOW);            // Here    Colored color for choosen is Yellow
         tft.setCursor(70, 50);
         tft.print(minutes);
 
-        tft.setTextColor(ST7735_WHITE);
+        tft.setTextColor(WHITE);
         tft.setCursor(55, 50);
         tft.print(":");
         delay(1000);
@@ -610,30 +622,30 @@ void loop() {
             minutesCounter ++;
             minutes = minutesCounter;
 
-            tft.fillScreen(ST7735_BLACK); // Clear the display
+            tft.fillScreen(BLACK); // Clear the display
             drawHeader();
             tft.setCursor(15, 20);
             tft.setTextSize(1);
-            tft.setTextColor(ST7735_YELLOW);
+            tft.setTextColor(YELLOW);
             tft.print("DATE & TIME PAGE");
             tft.setCursor(15, 30);
             tft.setTextSize(1);
-            tft.setTextColor(ST7735_BLUE);
+            tft.setTextColor(BLUE);
             tft.print("Rotate to adjust");
             tft.setCursor(20, 100);
-            tft.setTextColor(ST7735_WHITE);
+            tft.setTextColor(WHITE);
             tft.print("Click to save.");
 
             tft.setCursor(20, 50);
             tft.setTextSize(3);
-            tft.setTextColor(ST7735_WHITE);
+            tft.setTextColor(WHITE);
             tft.print(hours);
 
-            tft.setTextColor(ST7735_YELLOW);
+            tft.setTextColor(YELLOW);
             tft.setCursor(70, 50);
             tft.print(minutes);
 
-            tft.setTextColor(ST7735_WHITE);
+            tft.setTextColor(WHITE);
             tft.setCursor(55, 50);
             tft.print(":");
           }
@@ -647,30 +659,30 @@ void loop() {
             minutesCounter --;
             minutes = minutesCounter;
 
-            tft.fillScreen(ST7735_BLACK); // Clear the display
+            tft.fillScreen(BLACK); // Clear the display
             drawHeader();
             tft.setCursor(15, 20);
             tft.setTextSize(1);
-            tft.setTextColor(ST7735_YELLOW);
+            tft.setTextColor(YELLOW);
             tft.print("DATE & TIME PAGE");
             tft.setCursor(15, 30);
             tft.setTextSize(1);
-            tft.setTextColor(ST7735_BLUE);
+            tft.setTextColor(BLUE);
             tft.print("Rotate to adjust");
             tft.setCursor(20, 100);
-            tft.setTextColor(ST7735_WHITE);
+            tft.setTextColor(WHITE);
             tft.print("Click to save.");
 
             tft.setCursor(20, 50);
             tft.setTextSize(3);
-            tft.setTextColor(ST7735_WHITE);
+            tft.setTextColor(WHITE);
             tft.print(hours);
 
-            tft.setTextColor(ST7735_YELLOW);
+            tft.setTextColor(YELLOW);
             tft.setCursor(70, 50);
             tft.print(minutes);
 
-            tft.setTextColor(ST7735_WHITE);
+            tft.setTextColor(WHITE);
             tft.setCursor(55, 50);
             tft.print(":");
           }
@@ -682,23 +694,23 @@ void loop() {
       if (digitalRead(encoderSwitch) == LOW) {
         //    selectedClockIndex ++;                                      // going to adjust days
         // TODO but for now we only adjust time!!!
-        configureTime(hours, minutes, seconds);
+        configureTime(hours, minutes, seconds, 23, 12);
         Serial.println("selectedClockIndex changed!");
 
         // Change colors of the numbers - Color minutes
-        tft.fillScreen(ST7735_BLACK); // Clear the display
+        tft.fillScreen(BLACK); // Clear the display
         drawHeader();
 
         tft.setCursor(20, 50);
         tft.setTextSize(3);
-        tft.setTextColor(ST7735_WHITE);              // Here   Colored color for choosen is Yellow
+        tft.setTextColor(WHITE);              // Here   Colored color for choosen is Yellow
         tft.print(hours);
 
-        tft.setTextColor(ST7735_WHITE);            // Here    Colored color for choosen is Yellow
+        tft.setTextColor(WHITE);            // Here    Colored color for choosen is Yellow
         tft.setCursor(70, 50);
         tft.print(minutes);
 
-        tft.setTextColor(ST7735_WHITE);
+        tft.setTextColor(WHITE);
         tft.setCursor(55, 50);
         tft.print(":");
 
@@ -706,7 +718,7 @@ void loop() {
         tft.setTextSize(1);
         tft.setCursor(15, 100);
 
-        tft.setTextColor(ST7735_GREEN);
+        tft.setTextColor(GREEN);
         tft.print("New value Saved.");
         delay(3000); // Wait before show Menu, because if user little holds the button activate the first menu automaticly
         pages[0] = 1;   // We return to Home page
@@ -715,21 +727,53 @@ void loop() {
         pages[3] = 0;
         pages[4] = 0;
         pages[5] = 0;
-        tft.fillScreen(ST7735_BLACK); // Clear the display
+        tft.fillScreen(BLACK); // Clear the display
         drawHomePage();
       }
     }
     aLastState = aState; // Updates the previous state of the outputA with the current state
   }
 
-  // -------------------------------------- Humidity PAGE ------------------------------------ //
+  // -------------------------------------- Battery PAGE ------------------------------------ //
   if (pages[4] == 1) {
-    Serial.println("We are in hum page");
-    tft.setTextSize(1);
-    tft.setCursor(15, 50);
-    tft.setTextColor(ST7735_BLUE);
-    tft.print("Conf Humidity");
+    Serial.println("We are in Batt page");
     drawHeader();
+    tft.setTextSize(1);
+    tft.setCursor(30, 20);
+    tft.setTextColor(GREEN);
+    tft.print("Battery INFO");
+    tft.drawCircle(64, 77, 45, MAGENTA);
+
+    // Define local variables, because the static ones are used by the drawHeader() method
+    tft.setTextSize(2);
+    tft.setTextColor(CYAN);
+    tft.setCursor(50, 45);
+    tft.print(map(vcc, 2961, 4214, 0, 100));
+    tft.print("%");
+    vccLastState = vcc;
+    tft.setTextColor(RED);
+    tft.setCursor(30, 69);
+    tft.print(vcc);
+    tft.print("mV");
+    vcc = readVcc() - vccCalibration;
+    if (vcc != vccLastState) {
+      tft.fillRect(45, 45, 40, 15, BLACK);  // Clear the Percentage
+      tft.fillRect(30, 69, 70, 15, BLACK);  // Clear the milliVolts
+      vccLastState = vcc;
+    }
+
+
+
+    // TODO - Change with digitalRead charging pin
+    if (true) {
+      tft.setTextColor(GREEN);
+      tft.setTextSize(1);
+      tft.setCursor(40, 95);
+      tft.print("Charging");
+    }
+
+
+
     if (digitalRead(encoderSwitch) == LOW) {  // We go back
       pages[0] = 0;
       pages[1] = 1;                          // We return to Menu page
@@ -739,7 +783,7 @@ void loop() {
       pages[5] = 0;
 
       // ------------- //
-      tft.fillScreen(ST7735_BLACK); // Clear the display
+      tft.fillScreen(BLACK); // Clear the display
       drawHeader();
       drawMenuListEmpty();
       counter = 4;                           // Fix the counter for the Menu, so we can start the menu with Last choosen menu
@@ -761,7 +805,7 @@ void loop() {
     Serial.println("We are in About page");
     tft.setTextSize(1);
     tft.setCursor(15, 15);
-    tft.setTextColor(ST7735_BLUE);
+    tft.setTextColor(BLUE);
     tft.print("Firmware Version");
     tft.setCursor(40, 30);
     tft.setTextSize(2);
@@ -816,7 +860,7 @@ void loop() {
       pages[5] = 0;
 
       // ------------- //
-      tft.fillScreen(ST7735_BLACK); // Clear the display
+      tft.fillScreen(BLACK); // Clear the display
       drawHeader();
       drawMenuListEmpty();
       counter = 6;                           // Fix the counter for the Menu, so we can start the menu with Last choosen menu
@@ -844,17 +888,17 @@ void drawTempPage() {
   Serial.println("");
 
   if (lastTempCalibrationState != tempCalibration) {                // ON ROTATION! we check for the last temo calibration, if not will start always from 0, instead of -4 for example
-    tft.fillScreen(ST7735_BLACK); // Clear the display
+    tft.fillScreen(BLACK); // Clear the display
     drawHeader();
     tft.setCursor(40, 40);
     tft.setTextSize(7);
     printTermometerValues(tempCalibration);
     tft.setCursor(15, 20);
     tft.setTextSize(1);
-    tft.setTextColor(ST7735_GREEN);
+    tft.setTextColor(GREEN);
     tft.print("Temp Calibration");
     tft.setCursor(20, 100);
-    tft.setTextColor(ST7735_WHITE);
+    tft.setTextColor(WHITE);
     tft.print("Click to save.");
     lastTempCalibrationState = tempCalibration;
   }
@@ -864,7 +908,7 @@ void drawTempPage() {
     Serial.println("Button pressed!");
     Serial.println("Saving the Calibration Value of the Temperature sensor!");
     Serial.println(" - In the beggining of the loop the temp value will be refreshed.");
-    tft.fillScreen(ST7735_BLACK); // Clear the display
+    tft.fillScreen(BLACK); // Clear the display
     drawHeader();
     tft.setCursor(40, 40);
     tft.setTextSize(7);
@@ -873,7 +917,7 @@ void drawTempPage() {
     tft.setTextSize(1);
     tft.setCursor(15, 100);
 
-    tft.setTextColor(ST7735_GREEN);
+    tft.setTextColor(GREEN);
     tft.print("New value Saved.");
     delay(1000); // Wait before show Menu, because if user little holds the button activate the first menu automaticly
     pages[0] = 1;   // We return to Home page
@@ -882,7 +926,7 @@ void drawTempPage() {
     pages[3] = 0;
     pages[4] = 0;
     pages[5] = 0;
-    tft.fillScreen(ST7735_BLACK); // Clear the display
+    tft.fillScreen(BLACK); // Clear the display
     drawHomePage();
   }
 }
@@ -895,41 +939,27 @@ void drawMenuListEmpty() {
   tft.setCursor(45, 45);
   tft.print("Clock");
   tft.setCursor(45, 65);
-  tft.print("Hum");
+  tft.print("Batt");
   tft.setCursor(45, 85);
   tft.print("About");
   tft.setCursor(45, 105);
   tft.print("Back");
 }
 
+// ver. 1.2 25778 bytes | ver. 1.3 25868 bytes, but less rows of code
 void drawMenuListButtons(bool isPresed, bool menu1IsSelected, bool menu2IsSelected, bool menu3IsSelected, bool menu4IsSelected, bool menu5IsSelected) {
-  uint16_t color1;
-  if (isPresed) {
-    color1 = GREEN;
-  } else {
-    color1 = CYAN;
-  }
-
-  if (menu1IsSelected) {
-    tft.drawRect(35, 20, 56, 15, color1);
-  } else if (menu2IsSelected) {
-    tft.drawRect(35, 40, 56, 15, color1);
-  } else if (menu3IsSelected) {
-    tft.drawRect(35, 60, 56, 15, color1);
-  } else if (menu4IsSelected) {
-    tft.drawRect(35, 80, 56, 15, color1);
-  } else if (menu5IsSelected) {
-    tft.drawRect(35, 100, 56, 15, color1);
-  }
+  uint16_t color = isPresed ? GREEN : CYAN;
+  uint16_t h = menu1IsSelected  ? 20 : menu2IsSelected  ? 40 : menu3IsSelected ? 60 : menu4IsSelected ? 80 : menu5IsSelected ? 100 : 0;
+  tft.drawRoundRect(35, h, 48, 15, 4, color);
 }
 
 void drawHeader() {
   // -----------------------BATTERY STATUS ICON----------------------------------
 
-  vcc = readVcc() - 130;  // Calibrate the reading
+  vcc = readVcc() - vccCalibration;  // Calibrate the reading
 
   if (vcc != vccLastState) {
-    tft.fillRect(40, 0, 88, 13, BLACK);               // clear header, voltage is changed
+    tft.fillRect(100, 0, 88, 11, BLACK);               // clear header, voltage is changed
     vccLastState = vcc;
   }
 
@@ -939,8 +969,8 @@ void drawHeader() {
   // readVcc uses a integreated vin of arduino to check the voltage supplied.
   // However we correct that voltage with - 0.130V (130 milliVolts) to get the right results
 
-  // min - 2.8V  (but for serial monitor needed at least 3.3)
-  // max - 5V
+  // Min - 2.8V  (but for serial monitor needed at least 3.3V)
+  // Max - 4.2V on Battery
 
   // Checked several settings:
   // Supplied     Actual + Calibration
@@ -955,30 +985,16 @@ void drawHeader() {
   // 5000 V          5079 V
 
   if (vcc < 2961) {
-    batteryStatusImage("", 105, 2,  5, true);            // we call the function with "" because if expired=true we set RED color instead
+    batteryStatusImage(105, 2, 21, 9, map(vcc, 2961, 4214, 1, 16), true);
   } else if (vcc >= 2961) {
     if (vcc <= 4214) {
-      tft.setCursor(40, 3);
-      tft.setTextColor(ST7735_GREEN);
-      tft.print(vcc);
-      tft.print("mV");
       // ------------------------CHARGING ICON BATTERY PERCENTAGE---------------------------------
-      tft.setTextColor(ST7735_WHITE);
-      tft.setCursor(82, 3);
-      tft.print(map(vcc, 2961, 4214, 0, 100));
-      tft.print("%");
-
-      batteryStatusImage(ST7735_WHITE, 105, 2, map(vcc, 2961, 4214, 1, 16), false);
+      batteryStatusImage(105, 2, 21, 9, map(vcc, 2961, 4214, 1, 16), false);
     } else if (vcc > 4214) {
-      tft.setCursor(40, 3);
-      tft.setTextColor(ST7735_YELLOW);
-      tft.print(vcc);
-      tft.print("mV");
-
-      tft.setTextColor(ST7735_CYAN);
+      // TODO - Add Charging logic
+      tft.setTextColor(CYAN);
       tft.setCursor(95, 3);
       tft.print("USB");
-
     }
   }
 
@@ -986,26 +1002,35 @@ void drawHeader() {
   // -----------------------DATE AND TIME ----------------------------------
   tft.setCursor(2, 3);
   tft.setTextSize(1);
-  tft.setTextColor(ST7735_WHITE);
+  tft.setTextColor(WHITE);
   tft.print(getClock());  // Print Clock
-  // Test print Clock on Serial Monitor TODO Delete it
+
 }
 
 void drawHomePage() {
   // check if temp has different value
-  
+
   if (temp != lastTempState) {
     tft.fillRect(0, 35, 128, 55, BLACK);      // Clear the Temp Value and Temp Image Rectangle Area
     lastTempState = temp;
+    if (tempMin > temp) {
+      tempMin = temp;
+    }
+    if (tempMax < temp) {
+      tempMax = temp;
+    }
   }
   drawHeader();
   // --------------------------TERMOMETER VALUES-------------------------------
   // TODO Change with the value from the sensor
-  // tft.fillScreen(ST7735_BLACK);
+  // tft.fillScreen(BLACK);
   tft.setCursor(40, 37);
   tft.setTextSize(7);
   printTermometerValues(temp);
   printHumidityValues(hum);
+  printTermometerMinAndMaxValues();
+  printSeasonText(30, 20);                      // Color is determinated by the season
+
   // -----------------------TERMOMETER STATUS ICON----------------------------------
   if (temp >= 22 && temp <= 24) {
     termometerStatusImage(WHITE, GREEN, 10, 10, map(temp, 1, 60, 1 , 29));
@@ -1015,81 +1040,81 @@ void drawHomePage() {
     termometerStatusImage(WHITE, BLUE, 10, 10, map(temp, 1, 60, 1 , 29));
   }
 
-  // -------------------- Humidity STATUS ICONS -------------------------------
-  HumidityStatusImage(BLUE, CYAN, 10, 98);
-  HumidityStatusImage(BLUE, CYAN, 5, 108);
-
 }
 
-// Warning - This method is using 3% of Storage Space
-void HumidityStatusImage(uint16_t colorBorder, uint16_t colorFillUp, uint16_t x, uint16_t y) {
-  tft.setCursor(1, 100);
-  tft.drawPixel(x , y + 3, colorBorder);
-  tft.drawPixel(x - 1, y + 4, colorBorder);
-  tft.drawPixel(x - 2, y + 5, colorBorder);
-  tft.drawPixel(x - 2, y + 6, colorBorder);
-  tft.drawPixel(x - 2, y + 7, colorBorder);
-  tft.drawPixel(x - 1, y + 8, colorBorder);
-  tft.drawPixel(x, y + 9, colorFillUp);
-  tft.drawPixel(x + 1, y + 10, colorBorder);
-  tft.drawPixel(x + 2, y + 10, colorBorder);
-  tft.drawPixel(x + 2, y + 9, colorBorder);
-  tft.drawPixel(x + 3, y + 8, colorBorder);
-  tft.drawPixel(x + 4, y + 7, colorBorder);
-  tft.drawPixel(x + 4, y + 6, colorBorder);
-  tft.drawPixel(x + 4, y + 6, colorBorder);
-  tft.drawPixel(x, y + 8, colorFillUp);
-  tft.drawPixel(x + 1, y + 9, colorFillUp);
-  tft.drawPixel(x + 1, y + 8, colorFillUp);
-  tft.drawPixel(x + 1, y + 7, colorFillUp);
-  tft.drawPixel(x + 2, y + 7, colorFillUp);
-  tft.drawPixel(x, y + 7, colorFillUp);
-  tft.drawPixel(x - 1, y + 7, colorFillUp);
-  tft.drawPixel(x - 1, y + 6, colorFillUp);
-  tft.drawPixel(x, y + 6, colorFillUp);
-  tft.drawPixel(x + 1, y + 6, colorFillUp);
-  tft.drawPixel(x + 2, y + 6, colorFillUp);
-  tft.drawPixel(x + 3, y + 5, colorFillUp);
-  tft.drawPixel(x + 2, y + 5, colorFillUp);
-  tft.drawPixel(x + 1, y + 5, colorFillUp);
-  tft.drawPixel(x, y + 5, colorFillUp);
-  tft.drawPixel(x - 1, y + 5, colorFillUp);
-  tft.drawPixel(x + 2, y + 4, colorFillUp);
-  tft.drawPixel(x + 1, y + 4, colorFillUp);
-  tft.drawPixel(x, y + 4, colorFillUp);
-  tft.drawPixel(x + 1, y + 3, colorFillUp);
+void printSeasonText(int x, int y) {
+  tft.setCursor(x, y);
+  tft.setTextSize(1);
+  if (RTC.read(tm)) {
+    if (tm.Month == 12 || tm.Month == 1 || tm.Month == 2) {
+      tft.setTextColor(CYAN);
+      tft.print("* WINTER *");
+    } else if (tm.Month == 3 || tm.Month == 4 || tm.Month == 5){
+      tft.setTextColor(GREEN);
+      tft.print("SPRING");
+    } else if (tm.Month == 6 || tm.Month == 7 || tm.Month == 8){
+      tft.setTextColor(YELLOW);
+      tft.print("SUMMER");
+    } else if (tm.Month == 9 || tm.Month == 10 || tm.Month == 11){
+      tft.setTextColor(MAGENTA);
+      tft.print("AUTUMN");
+    }
+  }
+}
 
+void printTermometerMinAndMaxValues() {
+  if (lastTempMin != tempMin){
+      tft.fillRect(102, 100, 17, 10, BLACK);
+      lastTempMin = tempMin;
+  }
+
+  if (lastTempMax != tempMax){
+    tft.fillRect(102, 115, 17, 10, BLACK);
+    lastTempMax = tempMax;
+  }
+  
+  tft.setCursor(75, 100);
+  tft.setTextSize(1);
+  tft.setTextColor(GREEN);
+  tft.print("Tmin ");
+  tft.setTextColor(MAGENTA);
+  tft.print(tempMin);
+  tft.setCursor(75, 115);
+  tft.setTextColor(GREEN);
+  tft.print("Tmax ");
+  tft.setTextColor(RED);
+  tft.print(tempMax);
 }
 
 void printHumidityValues(int hum) {
   if (hum > 99) { // Prevent display the 100th value, we dont need this space on the screen
     hum = 99;
   }
+  // Refresh with black rectangle if value is changed
   if (lasthumState != hum) {
-    tft.fillRect(18, 100, 35, 23, BLACK);
+    tft.fillRect(10, 100, 35, 23, BLACK);
     lasthumState = hum;
   }
-
-  tft.setCursor(18, 100);
+  tft.setCursor(10, 100);
   tft.setTextColor(CYAN);
   tft.setTextSize(3);
   tft.print(hum);
 
-  // Draw % symbol
-  tft.drawCircle(58, 104, 3, CYAN);
-  tft.drawCircle(68, 116, 3, CYAN);
-  tft.drawLine(58, 118, 68, 102, CYAN);
+  // Draw "%" percent symbol
+  tft.drawCircle(50, 104, 3, CYAN);
+  tft.drawCircle(60, 116, 3, CYAN);
+  tft.drawLine(50, 118, 60, 102, CYAN);
 }
 
 void printTermometerValues(int temp) {
   if (temp >= 22 && temp <= 24) {
-    tft.setTextColor(ST7735_GREEN);
+    tft.setTextColor(GREEN);
     tft.print(temp);
   } else if (temp > 24) {
-    tft.setTextColor(ST7735_RED);
+    tft.setTextColor(RED);
     tft.print(temp);
   } else if (temp < 22) {
-    tft.setTextColor(ST7735_BLUE);
+    tft.setTextColor(BLUE);
     tft.print(temp);
   }
 }
@@ -1137,49 +1162,73 @@ long readVcc() {
   return v;
 }
 
-void batteryStatusImage(uint16_t color1, uint16_t x, uint16_t y, uint16_t fillUp, boolean expired) { // fillUp can be from 1 to 16
+// Optimized scince ver. 1.2 = 80 bytes free
+void batteryStatusImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t fillUp, boolean expired) {
+  uint16_t color;
   if (expired) {
-    tft.drawFastHLine(x, 2, 20, ST7735_RED);                   // Draw top Corner line of the battery icon
-    tft.drawFastHLine(x, y + 8, 20, ST7735_RED);               // Draw bottom Corner line of the battery icon
-    tft.drawFastVLine(x, 2, 9, ST7735_RED);                    // Draw left Corner line of the battery icon
-    tft.drawFastVLine(x + 20, 2, 9, ST7735_RED);               // Draw right Corner line of the battery icon
-    tft.drawFastVLine(x - 1, y + 2, 5, ST7735_RED);            // Draw the left positive cathode of the battery #1
-    tft.drawFastVLine(x - 2, y + 2, 5, ST7735_RED);            // Draw the left positive cathode of the battery #2
+    color = RED;
   } else {
-    tft.drawFastHLine(x, 2, 20, color1);                       // Draw top Corner line of the battery icon
-    tft.drawFastHLine(x, y + 8, 20, color1);                   // Draw bottom Corner line of the battery icon
-    tft.drawFastVLine(x, 2, 9, color1);                        // Draw left Corner line of the battery icon
-    tft.drawFastVLine(x + 20, 2, 9, color1);                   // Draw right Corner line of the battery icon
-    tft.drawFastVLine(x - 1, y + 2, 5, color1);                // Draw the left positive cathode of the battery #1
-    tft.drawFastVLine(x - 2, y + 2, 5, color1);                // Draw the left positive cathode of the battery #2
-
-    // filling up
-    for (int i = 0; i <= fillUp; i++) {
-      tft.drawFastVLine((x + 18) - i, y + 2, 5, ST7735_GREEN);
+    color = WHITE;
+    for (int i = 0; i <= fillUp; i++) {                  // Filling up
+      tft.drawFastVLine((x + 18) - i, y + 2, h - 4, GREEN);  // can be from 1 to 16
     }
   }
+  tft.drawRect(x, y, w, h, color);
+  tft.drawFastVLine(x - 1, y + 2, h - 4, color);                 // Draw the left positive cathode of the battery #1
+  tft.drawFastVLine(x - 2, y + 2, h - 4, color);                 // Draw the left positive cathode of the battery #2
 }
-
-
 
 String getClock() {
   String msg = "";
   tmElements_t tm;
   int hours = 0;
   int minutes = 0;
+  int seconds = 0;
+
+  int days = 0;
+  int months = 0;
+
 
   if (RTC.read(tm)) {
+
+    // ----------- GET TIME ---------- //
     hours = tm.Hour;
+    if (hours < 10) {
+      msg += 0;
+    }
     minutes = tm.Minute;
     if (hours != hourLastState || minutes != minutesLastState) {
       tft.fillRect(0, 0, 34, 13, BLACK);
       hourLastState = hours;
       minutesLastState = minutes;
     }
-
     msg += hours;
     msg += ":";
+    if (minutes < 10) {
+      msg += 0;
+    }
     msg += minutes;
+    msg += ":";
+
+    seconds = tm.Second;
+    if (seconds < 10) {
+      msg += 0;
+    }
+    if (seconds != secondsLastState) {
+      tft.fillRect(36, 0, 15, 11, BLACK);
+      secondsLastState = seconds;
+    }
+    msg += seconds;
+
+    // ----------- GET DATE ----------- //
+    days = tm.Day;
+    months = tm.Month;
+
+    msg += " ";
+    msg += days;
+    msg += "/";
+    msg += monthName[months - 1];
+
   } else {
     if (RTC.chipPresent()) {
       // TODO - display error on the screen
@@ -1200,30 +1249,16 @@ String getClock() {
   return msg;
 }
 
-void configureTime(int Hour, int Min, int Sec) {   // Configure RTCDS1307 Clock module by using #include <TimeLib.h>   // Needed by CLock ; #include <DS1307RTC.h> // Clock library
-  tm.Hour = Hour;
-  tm.Minute = Min;
-  tm.Second = Sec;
+
+void configureTime(int hours, int mins, int secs, int days, int months) {   // Configure RTCDS1307 Clock module by using #include <TimeLib.h>   // Needed by CLock ; #include <DS1307RTC.h> // Clock library
+  tm.Hour = hours;
+  tm.Minute = mins;
+  tm.Second = secs;
+  tm.Day = days;
+  tm.Month = months;
   RTC.write(tm);
 }
 
-// TODO - getDate is not used, uncomment when will be displayed on the screen
-/*
-  bool getDate(const char *str)
-  {
-  char Month[12];
-  int Day, Year;
-  uint8_t monthIndex;
-
-  if (sscanf(str, "%s %d %d", Month, &Day, &Year) != 3) return false;
-  for (monthIndex = 0; monthIndex < 12; monthIndex++) {
-    if (strcmp(Month, monthName[monthIndex]) == 0) break;
-  }
-  if (monthIndex >= 12) return false;
-
-  return true;
-  }
-*/
 
 int getDhtData(String option) {
   // Wait a few seconds between measurements.
@@ -1273,9 +1308,9 @@ int getDhtData(String option) {
 
 void printFirmwareInfo() {
   tft.setTextSize(1);
-  tft.setTextColor(ST7735_GREEN);
+  tft.setTextColor(GREEN);
   tft.setCursor(5, 30);
-  tft.print("SKL Electronics");
+  tft.print("KT2_144 Open Source");
   delay(1000);
   tft.setCursor(5, 50);
   tft.print("Firmware date:");
@@ -1284,5 +1319,5 @@ void printFirmwareInfo() {
   tft.setCursor(5, 80);
   tft.print(__TIME__);
   delay(3000);
-  tft.fillScreen(ST7735_BLACK);
+  tft.fillScreen(BLACK);
 }
