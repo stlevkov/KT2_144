@@ -38,7 +38,7 @@ Battery RTC: 3.3V CR2032
 
 ![Project image](https://github.com/stlevkov/KT2_144/blob/master/Resources/project_standby.jpg)
 
-<b>How to</b>
+<h2>How to create hardware</h2>
 In order to create the hardware part, follow the steps in the instructable:
 https://www.instructables.com/id/Home-Thermometer-for-Baby-Room-With-Temperature-Ca/
 
