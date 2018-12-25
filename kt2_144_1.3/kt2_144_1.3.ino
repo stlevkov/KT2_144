@@ -45,7 +45,7 @@ DHT dht(DHTPIN, DHTTYPE);
 #define WHITE 0xFFFF
 
 // Define your project info here to show on about page
-#define FIRMWARE_VERSION "1.2"
+#define FIRMWARE_VERSION "1.3"
 #define COUNTRY "Bulgaria"
 #define CODE_LOCATION "GitHub"
 #define CODE_ORIGIN "/stlevkov"
@@ -89,6 +89,22 @@ const char *monthName[12] = {
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 };
+int days = 0;
+int months = 0;
+int daysCounter = 0;
+int monthsCounter = 0;
+
+//Define hollidays by your Country, hereis example with Bulgarian holidays
+const char *holidays[10] = {
+  "   * NEW YEAR *", "LIBERATION", "WORKERS DAY",
+  "Saint George's", "Edu,Culture DAY", "UNIFICATION",
+  "INDEPENDENCE", "Awakening Day", "* Christmas Eve *",
+  "   * CHRISTMAS *",
+};
+
+String holidayLastState = "";
+String headText = "";                   // Holds Holidays and Seasons
+
 tmElements_t tm;                        // Define the RTC Class use
 
 int hourLastState = 0;                  // Needed for refreshing the Hour value
@@ -103,6 +119,10 @@ int seconds;
 int pages[] = {0, 0, 0, 0, 0};          // Array menus holding Pages
 int menus[] = {1, 0, 0, 0, 0};          // Array menus holding positions in the Menu List
 
+bool firstCalibration;                  // Needed only for the first Calibration because Tmax shows incorrect value
+
+#define chargePin 5
+byte chargingLastState = 0;
 
 void setup() {
   // Boot up:
@@ -144,7 +164,10 @@ void setup() {
 
   // ---------------- +++++  INIT TEMP MIN MAX     +++++----------------- //
   tempMin = getDhtData("temp");
-  tempMax = tempMin;
+  firstCalibration = true;         // Needed only for the first Calibration, because Max Temp must be accurate
+
+  pinMode(chargePin, INPUT);
+  chargingLastState = digitalRead(chargePin);
 }
 
 void loop() {
@@ -324,33 +347,40 @@ void loop() {
         tft.setTextSize(1);
         tft.setTextColor(BLUE);
         tft.print("Rotate to adjust");
-        tft.setCursor(20, 100);
-        tft.setTextColor(WHITE);
-        tft.print("Click to save.");
+        tft.setCursor(20, 110);
+        tft.print("Click to Save");
 
         tmElements_t tm;                         // Initialize Time before the loop in the page
         RTC.read(tm);                            // Because when adjusting - the time keep changing
 
-        hours = tm.Hour;                         // Prepare the global variables for adjusting
-        minutes = tm.Minute;                     // Prepare the global variables for adjusting
+        hours = tm.Hour;                         // Prepare the global variables for adjusting Hours
+        minutes = tm.Minute;
+        days = tm.Day;
+        months = tm.Month;
 
-        hoursCounter = hours;                    // When Adjust - starts from where the current time is
-        minutesCounter = minutes;                // When Adjust - starts from where the current time is
+        hoursCounter = hours;                    // When Adjust - starts from where the current time & date is
+        minutesCounter = minutes;
+        daysCounter = days;
+        monthsCounter = months;
+
         selectedClockIndex = 0;                  // We select the hours to adjust first when reaching the clock page
         // Display first init before the first Rotation of the button to show the clock
-        tft.setCursor(20, 50);
+        tft.setCursor(20, 45);
         tft.setTextSize(3);
         tft.setTextColor(YELLOW);
         tft.print(hours);
 
         tft.setTextColor(WHITE);
-        tft.setCursor(70, 50);
+        tft.setCursor(70, 45);
         tft.print(minutes);
 
-        tft.setTextColor(WHITE);
-        tft.setCursor(55, 50);
+        tft.setCursor(55, 45);
         tft.print(":");
 
+        tft.setCursor(20, 77);
+        tft.print(days);
+        tft.print("/");
+        tft.print(months);
       }
 
     } else if (menus[2] == 1) {
@@ -509,25 +539,28 @@ void loop() {
             tft.setTextSize(1);
             tft.setTextColor(BLUE);
             tft.print("Rotate to adjust");
-            tft.setCursor(20, 100);
-            tft.setTextColor(WHITE);
-            tft.print("Click to save.");
+            tft.setCursor(20, 110);
+            tft.print("Click to Save");
 
-            tft.setCursor(20, 50);
+            tft.setCursor(20, 45);
             tft.setTextSize(3);
             tft.setTextColor(YELLOW);
             tft.print(hours);
 
             tft.setTextColor(WHITE);
-            tft.setCursor(70, 50);
+            tft.setCursor(70, 45);
             tft.print(minutes);
 
-            tft.setTextColor(WHITE);
-            tft.setCursor(55, 50);
+            tft.setCursor(55, 45);
             tft.print(":");
+
+            tft.setCursor(20, 77);
+            tft.print(days);
+            tft.print("/");
+            tft.print(months);
           }
         } else {
-          if (hoursCounter <= 0) {
+          if (hoursCounter <= 0) {  // TODO - Check for the #bug while rotating hours to 23, cannot set 0, ir jumps again to 23
             hoursCounter = 24;
           } else {
             counter --;
@@ -546,30 +579,32 @@ void loop() {
             tft.setTextSize(1);
             tft.setTextColor(BLUE);
             tft.print("Rotate to adjust");
-            tft.setCursor(20, 100);
-            tft.setTextColor(WHITE);
-            tft.print("Click to save.");
+            tft.setCursor(20, 110);
+            tft.print("Click to Save");
 
-            tft.setCursor(20, 50);
+            tft.setCursor(20, 45);
             tft.setTextSize(3);
             tft.setTextColor(YELLOW);
             tft.print(hours);
 
             tft.setTextColor(WHITE);
-            tft.setCursor(70, 50);
+            tft.setCursor(70, 45);
             tft.print(minutes);
 
-            tft.setTextColor(WHITE);
-            tft.setCursor(55, 50);
+            tft.setCursor(55, 45);
             tft.print(":");
 
+            tft.setCursor(20, 77);
+            tft.print(days);
+            tft.print("/");
+            tft.print(months);
           }
 
         }
       }
       Serial.println(counter);
       Serial.println(hoursCounter);
-      // Click to save the current position
+      // Click to Save the current position
       if (digitalRead(encoderSwitch) == LOW) {
         counter = 0;
         hoursCounter = 0;
@@ -587,28 +622,30 @@ void loop() {
         tft.setTextSize(1);
         tft.setTextColor(BLUE);
         tft.print("Rotate to adjust");
-        tft.setCursor(20, 100);
-        tft.setTextColor(WHITE);
-        tft.print("Click to save.");
+        tft.setCursor(20, 110);
+        tft.print("Click to Save");
 
-        tft.setCursor(20, 50);
+        tft.setCursor(20, 45);
         tft.setTextSize(3);
         tft.setTextColor(WHITE);              // Here   Colored color for choosen is Yellow
         tft.print(hours);
 
         tft.setTextColor(YELLOW);            // Here    Colored color for choosen is Yellow
-        tft.setCursor(70, 50);
+        tft.setCursor(70, 45);
         tft.print(minutes);
 
         tft.setTextColor(WHITE);
-        tft.setCursor(55, 50);
+        tft.setCursor(55, 45);
         tft.print(":");
+
+        tft.setCursor(20, 77);
+        tft.print(days);
+        tft.print("/");
+        tft.print(months);
         delay(1000);
       }
 
     } else if (selectedClockIndex == 1) {  // We adjust minutes
-
-
       // If the previous and the current state of the outputA are different, that means a Pulse has occured
       if (aState != aLastState) {
         // If the outputB state is different to the outputA state, that means the encoder is rotating clockwise
@@ -632,22 +669,26 @@ void loop() {
             tft.setTextSize(1);
             tft.setTextColor(BLUE);
             tft.print("Rotate to adjust");
-            tft.setCursor(20, 100);
-            tft.setTextColor(WHITE);
-            tft.print("Click to save.");
+            tft.setCursor(20, 110);
+            tft.print("Click to Save");
 
-            tft.setCursor(20, 50);
+            tft.setCursor(20, 45);
             tft.setTextSize(3);
             tft.setTextColor(WHITE);
             tft.print(hours);
 
             tft.setTextColor(YELLOW);
-            tft.setCursor(70, 50);
+            tft.setCursor(70, 45);
             tft.print(minutes);
 
             tft.setTextColor(WHITE);
-            tft.setCursor(55, 50);
+            tft.setCursor(55, 45);
             tft.print(":");
+
+            tft.setCursor(20, 77);
+            tft.print(days);
+            tft.print("/");
+            tft.print(months);
           }
         } else {
           if (minutesCounter <= 0) {
@@ -669,57 +710,331 @@ void loop() {
             tft.setTextSize(1);
             tft.setTextColor(BLUE);
             tft.print("Rotate to adjust");
-            tft.setCursor(20, 100);
-            tft.setTextColor(WHITE);
-            tft.print("Click to save.");
+            tft.setCursor(20, 110);
+            tft.print("Click to Save");
 
-            tft.setCursor(20, 50);
+            tft.setCursor(20, 45);
             tft.setTextSize(3);
             tft.setTextColor(WHITE);
             tft.print(hours);
 
             tft.setTextColor(YELLOW);
-            tft.setCursor(70, 50);
+            tft.setCursor(70, 45);
             tft.print(minutes);
 
             tft.setTextColor(WHITE);
-            tft.setCursor(55, 50);
+            tft.setCursor(55, 45);
             tft.print(":");
+
+            tft.setCursor(20, 77);
+            tft.print(days);
+            tft.print("/");
+            tft.print(months);
           }
         }
       }
       Serial.println(counter);
       Serial.println(minutesCounter);
-      // Click to save the current position
-      if (digitalRead(encoderSwitch) == LOW) {
-        //    selectedClockIndex ++;                                      // going to adjust days
-        // TODO but for now we only adjust time!!!
-        configureTime(hours, minutes, seconds, 23, 12);
-        Serial.println("selectedClockIndex changed!");
+      // Click to Save the current position
+      if (digitalRead(encoderSwitch) == LOW) {                  // We go to adjust days
+
+        selectedClockIndex++;
+        counter = 0;
 
         // Change colors of the numbers - Color minutes
         tft.fillScreen(BLACK); // Clear the display
         drawHeader();
 
-        tft.setCursor(20, 50);
+        tft.setCursor(15, 20);
+        tft.setTextSize(1);
+        tft.setTextColor(YELLOW);
+        tft.print("DATE & TIME PAGE");
+        tft.setCursor(15, 30);
+        tft.setTextSize(1);
+        tft.setTextColor(BLUE);
+        tft.print("Rotate to adjust");
+        tft.setCursor(20, 110);
+        tft.print("Click to Save");
+
+        tft.setCursor(20, 45);
+        tft.setTextSize(3);
+        tft.setTextColor(WHITE);              // Here   Colored color for choosen is Yellow
+        tft.print(hours);
+
+
+        tft.setCursor(70, 45);
+        tft.print(minutes);
+
+
+        tft.setCursor(55, 45);
+        tft.print(":");
+
+        tft.setCursor(20, 77);
+        tft.setTextColor(YELLOW);
+        tft.print(days);
+        tft.setTextColor(WHITE);
+        tft.print("/");
+        tft.print(months);
+        delay(1000);
+      }
+    } else if (selectedClockIndex == 2) {    // We adjust days
+      // If the previous and the current state of the outputA are different, that means a Pulse has occured
+      // TODO - Add logic for February - wich is 28, 29 to prevent bugs
+      if (aState != aLastState) {
+        // If the outputB state is different to the outputA state, that means the encoder is rotating clockwise
+        if (bState != aState) {
+          if (daysCounter >= 31) {
+            daysCounter = -1;
+          } else {
+            counter ++;
+          }
+          if (((counter & 1) == 0)) {
+            daysCounter ++;
+
+            tft.fillScreen(BLACK); // Clear the display
+            drawHeader();
+            tft.setCursor(15, 20);
+            tft.setTextSize(1);
+            tft.setTextColor(YELLOW);
+            tft.print("DATE & TIME PAGE");
+            tft.setCursor(15, 30);
+            tft.setTextSize(1);
+            tft.setTextColor(BLUE);
+            tft.print("Rotate to adjust");
+            tft.setCursor(20, 110);
+            tft.print("Click to Save");
+
+            tft.setCursor(20, 45);
+            tft.setTextSize(3);
+            tft.setTextColor(WHITE);
+            tft.print(hours);
+
+            tft.setCursor(70, 45);
+            tft.print(minutes);
+
+            tft.setCursor(55, 45);
+            tft.print(":");
+
+            tft.setCursor(20, 77);
+            tft.setTextColor(YELLOW);
+            tft.print(daysCounter);
+            tft.setTextColor(WHITE);
+            tft.print("/");
+            tft.print(months);
+          }
+        } else {
+          if (daysCounter <= 0) {
+            daysCounter = 31;
+          } else {
+            counter --;
+          }
+          if (((counter & 1) == 0)) {
+            daysCounter --;
+
+            tft.fillScreen(BLACK); // Clear the display
+            drawHeader();
+            tft.setCursor(15, 20);
+            tft.setTextSize(1);
+            tft.setTextColor(YELLOW);
+            tft.print("DATE & TIME PAGE");
+            tft.setCursor(15, 30);
+            tft.setTextSize(1);
+            tft.setTextColor(BLUE);
+            tft.print("Rotate to adjust");
+            tft.setCursor(20, 110);
+            tft.print("Click to Save");
+
+            tft.setCursor(20, 45);
+            tft.setTextSize(3);
+            tft.setTextColor(WHITE);
+            tft.print(hours);
+
+            tft.setTextColor(WHITE);
+            tft.setCursor(70, 45);
+            tft.print(minutes);
+
+            tft.setCursor(55, 45);
+            tft.print(":");
+
+            tft.setCursor(20, 77);
+            tft.setTextColor(YELLOW);
+            tft.print(daysCounter);
+            tft.setTextColor(WHITE);
+            tft.print("/");
+            tft.print(months);
+          }
+
+        }
+      }
+      Serial.println(counter);
+      Serial.println(daysCounter);
+      // Click to Save the current position
+      if (digitalRead(encoderSwitch) == LOW) {                        // going to adjust months
+        counter = 0;
+        selectedClockIndex ++;
+        Serial.println("selectedClockIndex changed!");
+
+        // Change colors of the numbers - Color minutes
+        tft.fillScreen(BLACK); // Clear the display
+        drawHeader();
+        tft.setCursor(15, 20);
+        tft.setTextSize(1);
+        tft.setTextColor(YELLOW);
+        tft.print("DATE & TIME PAGE");
+        tft.setCursor(15, 30);
+        tft.setTextSize(1);
+        tft.setTextColor(BLUE);
+        tft.print("Rotate to adjust");
+        tft.setCursor(20, 110);
+        tft.print("Click to Save");
+
+        tft.setCursor(20, 45);
         tft.setTextSize(3);
         tft.setTextColor(WHITE);              // Here   Colored color for choosen is Yellow
         tft.print(hours);
 
         tft.setTextColor(WHITE);            // Here    Colored color for choosen is Yellow
-        tft.setCursor(70, 50);
+        tft.setCursor(70, 45);
         tft.print(minutes);
 
         tft.setTextColor(WHITE);
-        tft.setCursor(55, 50);
+        tft.setCursor(55, 45);
         tft.print(":");
+
+        tft.setCursor(20, 77);
+        tft.print(daysCounter);
+        tft.print("/");
+        tft.setTextColor(YELLOW);
+        tft.print(months);
+        delay(1000);
+      }
+    } else if (selectedClockIndex == 3) {                     // We adjust months
+      // If the previous and the current state of the outputA are different, that means a Pulse has occured
+
+      if (aState != aLastState) {
+        // If the outputB state is different to the outputA state, that means the encoder is rotating clockwise
+        if (bState != aState) {
+          if (monthsCounter >= 12) {
+            monthsCounter = -1;
+          } else {
+            counter ++;
+          }
+          if (((counter & 1) == 0)) {
+            monthsCounter ++;
+
+            tft.fillScreen(BLACK); // Clear the display
+            drawHeader();
+            tft.setCursor(15, 20);
+            tft.setTextSize(1);
+            tft.setTextColor(YELLOW);
+            tft.print("DATE & TIME PAGE");
+            tft.setCursor(15, 30);
+            tft.setTextSize(1);
+            tft.setTextColor(BLUE);
+            tft.print("Rotate to adjust");
+            tft.setCursor(20, 110);
+            tft.print("Click to Save");
+
+            tft.setCursor(20, 45);
+            tft.setTextSize(3);
+            tft.setTextColor(WHITE);
+            tft.print(hours);
+
+            tft.setCursor(70, 45);
+            tft.print(minutes);
+
+            tft.setCursor(55, 45);
+            tft.print(":");
+
+            tft.setCursor(20, 77);
+            tft.print(daysCounter);
+            tft.print("/");
+            tft.setTextColor(YELLOW);
+            tft.print(monthsCounter);
+          }
+        } else {
+          if (monthsCounter <= 0) {
+            monthsCounter = 12;
+          } else {
+            counter --;
+          }
+          if (((counter & 1) == 0)) {
+            monthsCounter --;
+
+            tft.fillScreen(BLACK); // Clear the display
+            drawHeader();
+            tft.setCursor(15, 20);
+            tft.setTextSize(1);
+            tft.setTextColor(YELLOW);
+            tft.print("DATE & TIME PAGE");
+            tft.setCursor(15, 30);
+            tft.setTextSize(1);
+            tft.setTextColor(BLUE);
+            tft.print("Rotate to adjust");
+            tft.setCursor(20, 110);
+            tft.print("Click to Save");
+
+            tft.setCursor(20, 45);
+            tft.setTextSize(3);
+            tft.setTextColor(WHITE);
+            tft.print(hours);
+
+            tft.setTextColor(WHITE);
+            tft.setCursor(70, 45);
+            tft.print(minutes);
+
+            tft.setCursor(55, 45);
+            tft.print(":");
+
+            tft.setCursor(20, 77);
+            tft.print(daysCounter);
+            tft.print("/");
+            tft.setTextColor(YELLOW);
+            tft.print(monthsCounter);
+          }
+
+        }
+      }
+      Serial.println(counter);
+      Serial.println(monthsCounter);
+      // Click to Save the current position
+      if (digitalRead(encoderSwitch) == LOW) {
+        configureTime(hours, minutes, seconds, daysCounter, monthsCounter);
+        counter = 0;
+        selectedClockIndex ++;                                      // going to finish and save
+        Serial.println("selectedClockIndex changed!");
+
+        // Change colors of the numbers - Color minutes
+        tft.fillScreen(BLACK); // Clear the display
+        drawHeader();
+        tft.setCursor(15, 20);
+        tft.setTextSize(1);
+        tft.setTextColor(YELLOW);
+        tft.print("DATE & TIME PAGE");
+        tft.setCursor(15, 30);
+        tft.setTextSize(1);
+        tft.setTextColor(BLUE);
+        tft.print("Rotate to adjust");
+        tft.setTextColor(WHITE);
+        tft.setCursor(20, 45);
+        tft.setTextSize(3);
+        tft.print(hours);
+        tft.setCursor(70, 45);
+        tft.print(minutes);
+        tft.setCursor(55, 45);
+        tft.print(":");
+
+        tft.setCursor(20, 77);
+        tft.print(daysCounter);
+        tft.print("/");
+        tft.print(monthsCounter);
 
         // Display text - New Values Saved
         tft.setTextSize(1);
-        tft.setCursor(15, 100);
+        tft.setCursor(15, 110);
 
         tft.setTextColor(GREEN);
-        tft.print("New value Saved.");
+        tft.print("New value Saved");
         delay(3000); // Wait before show Menu, because if user little holds the button activate the first menu automaticly
         pages[0] = 1;   // We return to Home page
         pages[1] = 0;
@@ -748,7 +1063,11 @@ void loop() {
     tft.setTextSize(2);
     tft.setTextColor(CYAN);
     tft.setCursor(50, 45);
-    tft.print(map(vcc, 2961, 4214, 0, 100));
+    int perc = map(vcc, 2961, 4214, 0, 100);
+    if (perc > 99){
+      perc = 99;
+    }
+    tft.print(perc);
     tft.print("%");
     vccLastState = vcc;
     tft.setTextColor(RED);
@@ -757,22 +1076,27 @@ void loop() {
     tft.print("mV");
     vcc = readVcc() - vccCalibration;
     if (vcc != vccLastState) {
-      tft.fillRect(45, 45, 40, 15, BLACK);  // Clear the Percentage
-      tft.fillRect(30, 69, 70, 15, BLACK);  // Clear the milliVolts
+      tft.fillRect(45, 45, 28, 15, BLACK);  // Clear the Percentage
+      tft.fillRect(30, 69, 47, 15, BLACK);  // Clear the milliVolts
       vccLastState = vcc;
     }
 
+    // ---------------------- Charging Logic ---------------- //
+    tft.setTextColor(GREEN);
+    tft.setTextSize(1);
+    tft.setCursor(32, 95);
+    byte charging = digitalRead(chargePin);
 
-
-    // TODO - Change with digitalRead charging pin
-    if (true) {
-      tft.setTextColor(GREEN);
-      tft.setTextSize(1);
-      tft.setCursor(40, 95);
-      tft.print("Charging");
+    if (chargingLastState != charging) {
+      tft.fillRect(32, 95, 65, 10, BLACK);
+      chargingLastState = charging;
     }
 
-
+    if (digitalRead(chargePin) == HIGH) {
+      tft.print(" Charging");
+    } else {
+      tft.print("Discharging");
+    }
 
     if (digitalRead(encoderSwitch) == LOW) {  // We go back
       pages[0] = 0;
@@ -897,9 +1221,9 @@ void drawTempPage() {
     tft.setTextSize(1);
     tft.setTextColor(GREEN);
     tft.print("Temp Calibration");
-    tft.setCursor(20, 100);
+    tft.setCursor(20, 110);
     tft.setTextColor(WHITE);
-    tft.print("Click to save.");
+    tft.print("Click to Save");
     lastTempCalibrationState = tempCalibration;
   }
 
@@ -913,6 +1237,10 @@ void drawTempPage() {
     tft.setCursor(40, 40);
     tft.setTextSize(7);
     temp = temp + tempCalibration;
+    if (firstCalibration) {
+      tempMax = temp;
+      firstCalibration = false;
+    }
     printTermometerValues(temp);
     tft.setTextSize(1);
     tft.setCursor(15, 100);
@@ -946,7 +1274,7 @@ void drawMenuListEmpty() {
   tft.print("Back");
 }
 
-// ver. 1.2 25778 bytes | ver. 1.3 25868 bytes, but less rows of code
+// ver. 1.3 = 90 more bytes, but less rows of code
 void drawMenuListButtons(bool isPresed, bool menu1IsSelected, bool menu2IsSelected, bool menu3IsSelected, bool menu4IsSelected, bool menu5IsSelected) {
   uint16_t color = isPresed ? GREEN : CYAN;
   uint16_t h = menu1IsSelected  ? 20 : menu2IsSelected  ? 40 : menu3IsSelected ? 60 : menu4IsSelected ? 80 : menu5IsSelected ? 100 : 0;
@@ -987,14 +1315,13 @@ void drawHeader() {
   if (vcc < 2961) {
     batteryStatusImage(105, 2, 21, 9, map(vcc, 2961, 4214, 1, 16), true);
   } else if (vcc >= 2961) {
-    if (vcc <= 4214) {
-      // ------------------------CHARGING ICON BATTERY PERCENTAGE---------------------------------
+    if (digitalRead(chargePin) == 0) {
+      // ------------------------ICON BATTERY PERCENTAGE---------------------------------
       batteryStatusImage(105, 2, 21, 9, map(vcc, 2961, 4214, 1, 16), false);
-    } else if (vcc > 4214) {
-      // TODO - Add Charging logic
-      tft.setTextColor(CYAN);
+    } else {
+      tft.setTextColor(BLUE);
       tft.setCursor(95, 3);
-      tft.print("USB");
+      tft.print(" USB");
     }
   }
 
@@ -1029,7 +1356,7 @@ void drawHomePage() {
   printTermometerValues(temp);
   printHumidityValues(hum);
   printTermometerMinAndMaxValues();
-  printSeasonText(30, 20);                      // Color is determinated by the season
+  printSeasonText(10, 20);                      // Color is determinated by the season
 
   // -----------------------TERMOMETER STATUS ICON----------------------------------
   if (temp >= 22 && temp <= 24) {
@@ -1045,34 +1372,51 @@ void drawHomePage() {
 void printSeasonText(int x, int y) {
   tft.setCursor(x, y);
   tft.setTextSize(1);
+
+  if (holidayLastState != headText) {
+    tft.fillRect(0, 15, 128, 18, BLACK);
+    holidayLastState = headText;
+  }
+
   if (RTC.read(tm)) {
     if (tm.Month == 12 || tm.Month == 1 || tm.Month == 2) {
-      tft.setTextColor(CYAN);
-      tft.print("* WINTER *");
-    } else if (tm.Month == 3 || tm.Month == 4 || tm.Month == 5){
+      if (tm.Month == 12) {
+        if (tm.Day == 24) {
+          headText =  holidays[8];    // Christmas Eve
+        } else if (tm.Day == 25 || tm.Day == 26) {
+          headText = holidays[9];    // Christmas Days
+        } else if (tm.Day == 31 ) {
+          headText = holidays[0];    // New Year
+        } else {
+          headText = "    * WINTER *";
+        }
+      }
+    } else if (tm.Month == 3 || tm.Month == 4 || tm.Month == 5) {
       tft.setTextColor(GREEN);
       tft.print("SPRING");
-    } else if (tm.Month == 6 || tm.Month == 7 || tm.Month == 8){
+    } else if (tm.Month == 6 || tm.Month == 7 || tm.Month == 8) {
       tft.setTextColor(YELLOW);
       tft.print("SUMMER");
-    } else if (tm.Month == 9 || tm.Month == 10 || tm.Month == 11){
+    } else if (tm.Month == 9 || tm.Month == 10 || tm.Month == 11) {
       tft.setTextColor(MAGENTA);
       tft.print("AUTUMN");
     }
+    tft.setTextColor(BLUE);
+    tft.print(headText);
   }
 }
 
 void printTermometerMinAndMaxValues() {
-  if (lastTempMin != tempMin){
-      tft.fillRect(102, 100, 17, 10, BLACK);
-      lastTempMin = tempMin;
+  if (lastTempMin != tempMin) {
+    tft.fillRect(102, 100, 17, 10, BLACK);
+    lastTempMin = tempMin;
   }
 
-  if (lastTempMax != tempMax){
+  if (lastTempMax != tempMax) {
     tft.fillRect(102, 115, 17, 10, BLACK);
     lastTempMax = tempMax;
   }
-  
+
   tft.setCursor(75, 100);
   tft.setTextSize(1);
   tft.setTextColor(GREEN);
@@ -1185,8 +1529,8 @@ String getClock() {
   int minutes = 0;
   int seconds = 0;
 
-  int days = 0;
-  int months = 0;
+  days = 0;
+  months = 0;
 
 
   if (RTC.read(tm)) {
@@ -1261,40 +1605,6 @@ void configureTime(int hours, int mins, int secs, int days, int months) {   // C
 
 
 int getDhtData(String option) {
-  // Wait a few seconds between measurements.
-  // Reading temperature or humidity takes about 250 milliseconds!
-  // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
-
-  // Read temperature as Fahrenheit (isFahrenheit = true)
-  //  float f = dht.readTemperature(true);
-  // Check if any reads failed and exit early (to try again).
-  // if (isnan(h) || isnan(t) || isnan(f)) {
-  // Serial.println("Failed to read from DHT sensor!");  //TODO - display error message on the screen, not system out println
-  //   return;
-  //  }
-  //  if (isnan(t) || isnan(h)) {  // Check for errors
-  //    return;
-  //  }
-
-  // Compute heat index in Fahrenheit (the default)
-  //  float hif = dht.computeHeatIndex(f, h);
-  // Compute heat index in Celsius (isFahreheit = false)
-  // float hic = dht.computeHeatIndex(t, h, false);
-  /*
-    Serial.print("Humidity: ");
-    Serial.print(h);
-    Serial.print(" %\t");
-    Serial.print("Temperature: ");
-    Serial.print(t);
-    Serial.print(" *C ");
-    Serial.print(f);
-    Serial.print(" *F\t");
-    Serial.print("Heat index: ");
-    Serial.print(hic);
-    Serial.print(" *C ");
-    Serial.print(hif);
-    Serial.println(" *F");
-  */
   if (option == "temp") {
     // Read temperature as Celsius (the default)
     float t = dht.readTemperature();
