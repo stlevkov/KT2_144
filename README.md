@@ -3,8 +3,8 @@ Arduino based 1.44" 65K color Thermometer for baby room - Calibrated code.
 
 -Version 1.2 - Many fixes, new features, check commit history
 
-Sketch uses 26232 bytes (85%) of program storage space. Maximum is 30720 bytes.
-Global variables use 1330 bytes (64%) of dynamic memory, leaving 718 bytes for local variables. Maximum is 2048 bytes.
+Sketch uses 30302 bytes (98%) of program storage space. Maximum is 30720 bytes.
+Global variables use 1578 bytes (77%) of dynamic memory, leaving 470 bytes for local variables. Maximum is 2048 bytes.
 
 <b>Power Characteristics:</b>
 Min: 0.102A (Idle), 
